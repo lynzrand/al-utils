@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <AssemblyName>AL_PovX</AssemblyName>
+    <Version>0.5.0</Version>
+    <GamePath Condition="'$(GamePath)' == ''">H:\Programs\amanatsu-location</GamePath>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="src/**/*.cs" />
+    <Reference Include="$(GamePath)/BepInEx/core/BepInEx.Core.dll" Private="false" />
+    <Reference Include="$(GamePath)/BepInEx/core/BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="$(GamePath)/BepInEx/core/Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="$(GamePath)/BepInEx/interop/*.dll" Exclude="$(GamePath)/BepInEx/interop/UnityEngine.CoreModule.dll" Private="false" />
+    <!-- Unity's generated NullableAttribute is not a CLR compiler attribute. -->
+    <Reference Include="$(GamePath)/BepInEx/interop/UnityEngine.CoreModule.dll" Aliases="unity" Private="false" />
+  </ItemGroup>
+  <Target Name="CheckGameReferences" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(GamePath)/BepInEx/interop/Assembly-CSharp.dll')" Text="Run the game once with BepInEx 6 IL2CPP installed to generate interop assemblies, then set GamePath to that installation." />
+  </Target>
+</Project>
