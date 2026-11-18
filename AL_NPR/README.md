@@ -1,0 +1,38 @@
+# Amanatsu Location scene lighting trial
+
+The November 18 default is the per-light toon skin and fabric pair. It keeps the softer white-fabric fill and smoothly bends the band direction toward the camera-facing axis for front lights and away for rear lights. The bend changes shading direction only; it does not move a light or redirect a cast shadow. Hair keeps its stock shader. Stock comparison remains available via F7.
+
+Run `python AL_NPR/tools/build_default.py` with Python 3.11, UnityPy and lz4 available, then build `AL_NPR/AL_NPR.csproj` in Release. The generated bundle is `artifacts/npr/default-build/al-skin-lighting.unity3d`. Use `AL_NPR/tools/Install-ToonDefault.ps1 -GamePath <game> -Bundle <bundle> -Backup <outside-game-directory>` to update an existing NPR install. Keep the bundle beside the loader DLL.
+
+In the map001 morning trial Far, Sky and Ground had no shadow maps. The shirt had shadow receiving enabled, but a temporary caster did not produce a measurable Sun Main spotlight shadow in the sampled shirt area, including with those directionals disabled. The camera bend made little visible difference to the face in that pose. The trial does not solve whole-scene shadows or establish animation performance.
+
+When `al-skin-lighting.unity3d` is next to the plugin, AL Scene Lighting loads it during BepInEx initialization. When a map becomes available, the plugin applies the replacement shaders to the original materials. It restores those materials and the light state on scene exit or when the override is toggled off.
+
+Press **F7** to compare the override with stock lighting. **F8** toggles the camera face light for diagnosis. The shader-side map build keeps the original world light setup by default, including the face light for stock materials. The replacement skin shaders filter their own light inputs. Scenes without an eligible map use the original materials and lights. The earlier character-fill trial is still available through F7 when the plugin starts without a bundle.
+
+The shader-side map variant selects light entries carrying AL's authored Map rendering layer bit. URP supplies the existing visible-light list, attenuation parameters and shadow textures. Their culling masks and shadow-caster sets retain the game's settings. This path depends on the current camera's Forward+ additional-light list. Cloth and hair reuse the faster light traversal with their original light selection and artistic response. The older direct-routing build is available by omitting `--shader-map-lights`.
+
+Build from the repository root with the game's BepInEx interop files available and with UnityPy and lz4 installed for the asset builder.
+
+```powershell
+dotnet build .\AL_NPR\AL_NPR.csproj -c Release
+python AL_NPR/tools/build_skin_assets.py --full-light-fusion --shader-map-lights --output artifacts/npr/direct-skin/al-skin-lighting.unity3d
+```
+
+Copy the release DLL and `al-skin-lighting.unity3d` into the game's `BepInEx\plugins\AL_NPR` directory to enable the override on next startup. The [development REPL](../AL_DevRepl/README.md) can call `AL_NPR.SceneLighting.StartDirect(bundlePath)` after loading the DLL for a live test. The current mode is reported by `SceneLighting.Status()`.
+
+[StockSkinLighting.hlsl](shaders/StockSkinLighting.hlsl) reconstructs selected expressions from the compiled face and body variants, including the layer gate, key band, two direct light responses, spherical harmonics, and reflection decode. It is an analysis include. Texture composition, the complete palette math, and the light iteration and shadow filtering remain in the shipped bytecode used by the live trial.
+
+The sampled `AL/Map` variant uses `_LightAddScale`, `_Desaturate`, and `_Clamp` on one base-color lighting blend. That operation controls how much light can push the material away from its authored color. Other map lighting terms are evaluated separately. The sampled skin variants feed their late additional-light sum into the skin palette without that control.
+
+The skin shaders use the renderer's scene spherical harmonics to supply the broad shaping lobe used by the stock palette. This removes the palette's dependency on the selected URP main light. Scene-colored additional lights keep their original shadow filtering and use a hue-preserving rolloff before shadow attenuation, followed by a second rolloff on the combined light sum. The stock material palettes, reflection decode, texture composition, depth and shadow passes are preserved.
+
+The full fusion build evaluates each light's distance, spot attenuation and shadow once while preserving three independent lighting sums and the original order within each sum. Head and body use full fusion across their 64 regular Forward+ variants each. Cloth and hair use it for the non-instanced variants and retain their original traversals with early shadow rejection in the conventional instancing variants. The DOTS and other unaudited passes keep their stock bytecode. The builder verifies the AL 1.0.4 stock asset hash, validates the expected loop structures and checks the repacked shader programs against the generated bytecode.
+
+The experimental `--map-directional` build also supplies a map directional that URP excluded from the Forward+ list. The runtime checks both the light's rendering layer and its GameObject culling mask. The shader applies its color and any available shadow through the same skin light responses as other map lights. A capture from an isolated synthetic-sun test verified both patched draws and the bound light data. A replay that omitted only the directional's shadow changed 32,623 face texels and 24,342 body texels in the selected 1600×900 HDR target. These checks use a synthetic directional in AL and leave visual acceptance in an authored daytime scene open.
+
+The experimental `--map-directionals` build feeds up to 32 authored map directionals to one skin light loop. It orders the records by light instance ID, applies the same capped response to every record, and retains the existing clustered punctual loop with its shadow filtering. Directional visibility is currently one. Build with `--full-light-fusion --shader-map-lights --map-directionals` and use a separate output path.
+
+In `map001`, moving URP's primary slot from `Directional Light Far` to `Directional Light Chara` changed the actual pipeline primary direction and selected different shadow-keyword variants. RenderDoc confirmed that each of the four bound head and body shaders matched the built bundle and that all three authored map directional records matched exactly in every draw. Replaying the primary capture with the directional count set to zero changed 27,836 head and 42,480 body texels in the 1600×900 HDR target. Restoring the actual shaders restored every sampled texel in both replayed draws. These tests confirm directional binding and shading response. Visual equivalence across game scenes and 4K frame times remain open.
+
+[Map light visibility smoke test](tools/README.map-visibility-smoke.md) exercises a separate ray-traced visibility path. In an isolated `map001` test, moving the authored sun out of URP's primary slot produced identical visibility for 371 sampled map receivers on each of four authored lights. The test used 133,425 captured triangles, including offscreen casters, and generated zero shadow maps. Live rendering still needs per-frame geometry and receiver inputs, material-aware cutout handling, and a binding to the skin shaders.
