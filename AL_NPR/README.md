@@ -6,6 +6,8 @@ Run `python AL_NPR/tools/build_default.py` with Python 3.11, UnityPy and lz4 ava
 
 In the map001 morning trial Far, Sky and Ground had no shadow maps. The shirt had shadow receiving enabled, but a temporary caster did not produce a measurable Sun Main spotlight shadow in the sampled shirt area, including with those directionals disabled. The camera bend made little visible difference to the face in that pose. The trial does not solve whole-scene shadows or establish animation performance.
 
+Next session, start from this per-light default. Increase the shadow-map resolution and compare the reported fluctuations in motion at the same camera angle. Brighten the skin a little, and darken the clothes by an even smaller amount. Keep white fabric brighter than adjacent skin. These are requested adjustments, not changes already applied.
+
 When `al-skin-lighting.unity3d` is next to the plugin, AL Scene Lighting loads it during BepInEx initialization. When a map becomes available, the plugin applies the replacement shaders to the original materials. It restores those materials and the light state on scene exit or when the override is toggled off.
 
 Press **F7** to compare the override with stock lighting. **F8** toggles the camera face light for diagnosis. The shader-side map build keeps the original world light setup by default, including the face light for stock materials. The replacement skin shaders filter their own light inputs. Scenes without an eligible map use the original materials and lights. The earlier character-fill trial is still available through F7 when the plugin starts without a bundle.
