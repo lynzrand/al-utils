@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GamePath Condition="'$(GamePath)' == ''">H:\Programs\gal\amanatsu-location</GamePath>
+    <InteropPath Condition="'$(InteropPath)' == ''">$(GamePath)/BepInEx/interop-AmanatsuLocation/interop</InteropPath>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="src/**/*.cs" />
+    <Compile Include="tests/UnityRenderSmoke.cs" />
+    <Compile Include="../src/PoseChangeTracker.cs" Link="src/PoseChangeTracker.cs" />
+    <Reference Include="$(GamePath)/BepInEx/core/BepInEx.Core.dll" Private="false" />
+    <Reference Include="$(GamePath)/BepInEx/core/BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="$(GamePath)/BepInEx/core/Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="$(InteropPath)/Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="$(InteropPath)/Unity.RenderPipelines.Universal.Runtime.dll" Private="false" />
+    <Reference Include="$(InteropPath)/Unity.RenderPipelines.Core.Runtime.dll" Private="false" />
+    <Reference Include="$(InteropPath)/Assembly-CSharp.dll" Private="false" />
+    <Reference Include="$(InteropPath)/Assembly-CSharp-firstpass.dll" Private="false" />
+    <Reference Include="$(InteropPath)/ILGLib.dll" Private="false" />
+    <Reference Include="$(InteropPath)/ZLinq.dll" Private="false" />
+    <Reference Include="$(InteropPath)/UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="$(InteropPath)/UnityEngine.InputLegacyModule.dll" Private="false" />
+    <Reference Include="$(InteropPath)/UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="$(InteropPath)/UnityEngine.UIModule.dll" Private="false" />
+    <Reference Include="$(InteropPath)/UnityEngine.UI.dll" Private="false" />
+    <Reference Include="$(InteropPath)/UnityEngine.TerrainModule.dll" Private="false" />
+    <Reference Include="$(InteropPath)/UnityEngine.CoreModule.dll" Aliases="unity" Private="false" />
+  </ItemGroup>
+  <Target Name="CheckGameReferences" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(InteropPath)/Unity.RenderPipelines.Universal.Runtime.dll')" Text="Set InteropPath to this installation's generated BepInEx IL2CPP interop directory." />
+  </Target>
+</Project>

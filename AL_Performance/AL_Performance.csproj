@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GamePath Condition="'$(GamePath)' == ''">H:\Programs\gal\amanatsu-location</GamePath>
+    <BepInExPath>$(GamePath)/BepInEx</BepInExPath>
+    <InteropPath Condition="'$(InteropPath)' == ''">$(BepInExPath)/interop-AmanatsuLocation/interop</InteropPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="*.cs" />
+    <Reference Include="$(BepInExPath)/core/BepInEx.Core.dll" Private="false" />
+    <Reference Include="$(BepInExPath)/core/BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="$(BepInExPath)/core/Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="$(InteropPath)/Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="$(InteropPath)/UnityEngine.CoreModule.dll" Aliases="unity" Private="false" />
+    <Reference Include="$(InteropPath)/Unity.RenderPipelines.Universal.Runtime.dll" Private="false" />
+    <Reference Include="$(InteropPath)/Assembly-CSharp.dll" Private="false" />
+    <Reference Include="$(InteropPath)/ILGLib.dll" Private="false" />
+    <Reference Include="$(InteropPath)/R3.dll" Private="false" />
+    <Reference Include="$(InteropPath)/UniTask.dll" Private="false" />
+  </ItemGroup>
+  <Target Name="CheckInterop" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(InteropPath)/Unity.RenderPipelines.Universal.Runtime.dll')" Text="Run the game with BepInEx to generate its IL2CPP interop assemblies, or set InteropPath to their directory." />
+  </Target>
+</Project>
