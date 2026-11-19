@@ -10,8 +10,12 @@ namespace AL_NPR;
 [BepInProcess("AmanatsuLocation.exe")]
 public sealed class Plugin : BasePlugin
 {
+    internal static BepInEx.Configuration.ConfigEntry<bool>? HigherMapShadowResolution { get; private set; }
+
     public override void Load()
     {
+        HigherMapShadowResolution = Config.Bind("Shadows", "HigherMapShadowResolution", true,
+            "Double the requested side length of authored map point/spot shadow slices and their atlas, up to 8192.");
         var path = Path.Combine(Path.GetDirectoryName(GetType().Assembly.Location)!, "al-skin-lighting.unity3d");
         if (File.Exists(path))
         {

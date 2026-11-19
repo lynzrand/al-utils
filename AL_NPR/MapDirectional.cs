@@ -52,12 +52,52 @@ internal sealed class MapDirectional : IDisposable
         {
             var method = AccessTools.Method(typeof(ForwardLights), nameof(ForwardLights.SetupLights));
             hook.Patch(method, prefix: new HarmonyMethod(typeof(MapDirectional), nameof(BindCamera)));
+            if (useList)
+            {
+                var create = AccessTools.Method(typeof(UniversalRenderPipeline), nameof(UniversalRenderPipeline.CreateShadowData));
+                hook.Patch(create, postfix: new HarmonyMethod(typeof(MapDirectional), nameof(ScaleMapShadowRequests)));
+            }
         }
         catch
         {
+            hook.UnpatchSelf();
             instance = null;
             buffer.Release();
             throw;
+        }
+    }
+
+    // URP builds fresh requests for every camera. Adjust them before packing so
+    // the caster pass and receiver constants both see the resulting slice sizes.
+    // Light components and the shared pipeline asset retain their authored values.
+    private static void ScaleMapShadowRequests(ContextContainer __0, UniversalShadowData __result)
+    {
+        if (instance is not { Active: true } binding || Plugin.HigherMapShadowResolution?.Value != true ||
+            !__result.supportsAdditionalLightShadows) return;
+        var cap = Math.Min(8192, SystemInfo.maxTextureSize);
+        var visible = __0.Get<UniversalLightData>().visibleLights;
+        var sizes = __result.resolution;
+        if (visible.Length != sizes.Count) return;
+
+        bool increased = false;
+        for (int i = 0; i < visible.Length; i++)
+        {
+            var entry = visible[i];
+            if (entry.lightType is not (LightType.Spot or LightType.Point)) continue;
+            int size = sizes[i];
+            if (size <= 0 || size >= cap) continue;
+            var light = entry.light;
+            if (!light || light.shadows == LightShadows.None || (light.cullingMask & binding.mapObjects) == 0 ||
+                (light.renderingLayerMask & MapRenderingLayer) == 0) continue;
+            sizes[i] = Math.Min(size * 2, cap);
+            increased = true;
+        }
+        if (increased)
+        {
+            __result.additionalLightsShadowmapWidth = Math.Max(__result.additionalLightsShadowmapWidth,
+                Math.Min(__result.additionalLightsShadowmapWidth * 2, cap));
+            __result.additionalLightsShadowmapHeight = Math.Max(__result.additionalLightsShadowmapHeight,
+                Math.Min(__result.additionalLightsShadowmapHeight * 2, cap));
         }
     }
 

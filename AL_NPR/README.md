@@ -1,12 +1,12 @@
 # Amanatsu Location scene lighting trial
 
-The November 18 default is the per-light toon skin and fabric pair. It keeps the softer white-fabric fill and smoothly bends the band direction toward the camera-facing axis for front lights and away for rear lights. The bend changes shading direction only; it does not move a light or redirect a cast shadow. Hair keeps its stock shader. Stock comparison remains available via F7.
+The November 19 default uses one per-light toon band and one diffuse fill formula for skin and fabric. It adds a small amount of fill to the skin palette and scales fabric's previous fill to 97%. Hair keeps its stock shader. F7 compares the result with stock. See the [short HLSL, lighting diagram and before/after sources](shaders/README.md) and the [cast-shadow tests and morning/night benchmarks](tools/README.material-response.md).
 
 Run `python AL_NPR/tools/build_default.py` with Python 3.11, UnityPy and lz4 available, then build `AL_NPR/AL_NPR.csproj` in Release. The generated bundle is `artifacts/npr/default-build/al-skin-lighting.unity3d`. Use `AL_NPR/tools/Install-ToonDefault.ps1 -GamePath <game> -Bundle <bundle> -Backup <outside-game-directory>` to update an existing NPR install. Keep the bundle beside the loader DLL.
 
 In the map001 morning trial Far, Sky and Ground had no shadow maps. The shirt had shadow receiving enabled, but a temporary caster did not produce a measurable Sun Main spotlight shadow in the sampled shirt area, including with those directionals disabled. The camera bend made little visible difference to the face in that pose. The trial does not solve whole-scene shadows or establish animation performance.
 
-Next session, start from this per-light default. Increase the shadow-map resolution and compare the reported fluctuations in motion at the same camera angle. Brighten the skin a little, and darken the clothes by an even smaller amount. Keep white fabric brighter than adjacent skin. These are requested adjustments, not changes already applied.
+With the per-light override active, `HigherMapShadowResolution` in `local.al.npr.cfg` doubles the requested side length for shadow-casting map spots and points and their camera atlas, up to 8192 on supported hardware. URP still packs the slices and can downscale individual requests. The setting leaves authored shadow flags and caster masks intact. Set it to `false` to keep the calibrated materials with the game's shadow sizes. The previous material bundle remains available as `artifacts/npr/default-build/per-light-nov18.unity3d`.
 
 When `al-skin-lighting.unity3d` is next to the plugin, AL Scene Lighting loads it during BepInEx initialization. When a map becomes available, the plugin applies the replacement shaders to the original materials. It restores those materials and the light state on scene exit or when the override is toggled off.
 
