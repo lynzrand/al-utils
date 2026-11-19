@@ -1,6 +1,6 @@
 # Amanatsu Location scene lighting trial
 
-The November 19 default uses one per-light toon band and one diffuse fill formula for skin and fabric. It adds a small amount of fill to the skin palette and scales fabric's previous fill to 97%. Hair keeps its stock shader. F7 compares the result with stock. See the [short HLSL, lighting diagram and before/after sources](shaders/README.md) and the [cast-shadow tests and morning/night benchmarks](tools/README.material-response.md).
+The November 19 default uses one per-light toon band and one diffuse fill formula for skin and fabric. It adds a small amount of fill to the skin palette and scales fabric's previous fill to 97%. The diffuse band bends the shading normal 25% toward each eligible light. The camera-bent comparison is available as `artifacts/npr/default-build/per-light-camera-bend.unity3d`. The normal-bend bundle uses stock hair. F7 compares the result with stock. See the [short HLSL, lighting diagram and before/after sources](shaders/README.md) and the [cast-shadow tests and morning/night benchmarks](tools/README.material-response.md).
 
 Run `python AL_NPR/tools/build_default.py` with Python 3.11, UnityPy and lz4 available, then build `AL_NPR/AL_NPR.csproj` in Release. The generated bundle is `artifacts/npr/default-build/al-skin-lighting.unity3d`. Use `AL_NPR/tools/Install-ToonDefault.ps1 -GamePath <game> -Bundle <bundle> -Backup <outside-game-directory>` to update an existing NPR install. Keep the bundle beside the loader DLL.
 

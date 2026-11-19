@@ -2,12 +2,13 @@
 // normals, shadow samples, and the original texture/palette composition.
 static const float3 Luminance = float3(0.212673, 0.715152, 0.072175);
 
-// These three functions describe the existing direction and range mapping.
-// L points from the surface to the source. V points to the camera.
-float3 BandDirection(float3 L, float3 V)
+// Both inputs are world-space unit vectors. Each light starts from the
+// original shading normal, so the result is independent of light order.
+float BandFacing(float3 normal : TEXCOORD0, float3 L : TEXCOORD1) : SV_Target
 {
-    float3 bent = L + 1.4 * dot(L, V) * V;
-    return bent * rsqrt(max(dot(bent, bent), 1e-12));
+    float3 bandNormal = 0.75 * normal + 0.25 * L;
+    bandNormal *= rsqrt(max(dot(bandNormal, bandNormal), 1e-12));
+    return saturate(dot(bandNormal, L));
 }
 
 float3 LimitLight(float3 rgb, float knee, float strength)
@@ -17,10 +18,10 @@ float3 LimitLight(float3 rgb, float knee, float strength)
 }
 
 float3 LightAtSurface(float3 rgb, float distanceAndSpot, float visibility,
-                      float3 normal, float3 L, float3 V)
+                      float3 normal, float3 L)
 {
     return LimitLight(rgb * distanceAndSpot, 0.10, 7.0)
-         * visibility * saturate(dot(normal, BandDirection(L, V)));
+         * visibility * BandFacing(normal, L);
 }
 
 // The builder compiles this entry into both light loops in all four materials.

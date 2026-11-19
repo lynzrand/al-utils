@@ -28,8 +28,13 @@ if __name__ == "__main__":
     retune(out, "individual", .70)
     final = out / "al-skin-lighting.unity3d"
     previous = out / "per-light-nov18.unity3d"
-    view(out / "paired-individual-soft.unity3d", previous)
-    material_response(previous, final)
-    if digest(final) != "eae7b1bf2fc63a742e1d09848a661eb927495643aee9e8f95b757085ed0f1a88":
+    unbent = out / "paired-individual-soft.unity3d"
+    view(unbent, previous)
+    camera_bent = out / "per-light-camera-bend.unity3d"
+    material_response(previous, camera_bent)
+    if digest(camera_bent) != "eae7b1bf2fc63a742e1d09848a661eb927495643aee9e8f95b757085ed0f1a88":
+        raise ValueError("Camera-bend comparison differs from the calibrated bundle")
+    material_response(unbent, final)
+    if digest(final) != "55564e271bcd3feb5b1f9105a83ebed4cd9bbe70184e97d7217896d2481e9271":
         raise ValueError("Default differs from the live-tested bundle")
     print(final)
