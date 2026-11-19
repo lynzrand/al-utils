@@ -40,6 +40,10 @@ def patch(code):
 
 
 def build(source,output):
+    build_material_bundle(source, output, lambda code, shader: patch(code))
+
+
+def build_material_bundle(source, output, transform):
     if source.resolve()==output.resolve():raise ValueError("Keep the original comparison bundle")
     bundle=load(source.read_bytes()).file;asset,=bundle.files.values()
     targets=(76,146,131,136)
@@ -49,7 +53,7 @@ def build(source,output):
             if not any(p=='UniversalForward' and s=='progFragment' and '_FORWARD_PLUS' in k
                        and 'DOTS_INSTANCING_ON' not in k for _,_,p,s,k in refs):continue
             o,n,j=rows[slot];w=data[j][o:o+n];c,=containers(w,0,n)
-            dx=build_container([(tag,patch(v) if tag==b'SHEX' else v) for tag,v in parts(w[c.start:c.end])])
+            dx=build_container([(tag,transform(v, id) if tag==b'SHEX' else v) for tag,v in parts(w[c.start:c.end])])
             head=bytearray(w[:c.start]);at,=[i for i in range(0,c.start-3,4) if U32.unpack_from(head,i)[0]==c.end-i-4]
             U32.pack_into(head,at,len(head)+len(dx)-at-4)
             changes[slot]=head+dx+bytes((-(len(head)+len(dx)))%4)+w[(c.end+3)&~3:]

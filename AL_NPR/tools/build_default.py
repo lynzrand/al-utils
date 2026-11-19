@@ -8,6 +8,7 @@ from build_skin_assets import WORKSPACE
 from build_toon_band_trials import BASE, build as skin
 from build_toon_cloth_trials import build as cloth, retune
 from build_view_band_trial import build as view
+from build_material_response import build as material_response
 
 
 if __name__ == "__main__":
@@ -26,7 +27,9 @@ if __name__ == "__main__":
     cloth(stock_cloth, out, "individual", bright_fabric=True)
     retune(out, "individual", .70)
     final = out / "al-skin-lighting.unity3d"
-    view(out / "paired-individual-soft.unity3d", final)
-    if digest(final) != "63e6be4aed4878f1515d71014f0e5c411f832509df80d2540c185a21a798c4bd":
+    previous = out / "per-light-nov18.unity3d"
+    view(out / "paired-individual-soft.unity3d", previous)
+    material_response(previous, final)
+    if digest(final) != "eae7b1bf2fc63a742e1d09848a661eb927495643aee9e8f95b757085ed0f1a88":
         raise ValueError("Default differs from the live-tested bundle")
     print(final)
