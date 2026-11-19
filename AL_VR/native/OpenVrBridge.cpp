@@ -10,6 +10,7 @@
 #include <limits>
 #include <mutex>
 #include <array>
+#include <algorithm>
 #include <optional>
 
 using Microsoft::WRL::ComPtr;
@@ -33,7 +34,7 @@ namespace
         EyeInfo right;
     };
 
-    enum ControllerButtons : uint32_t { Trigger = 1, Secondary = 2, Menu = 4 };
+    enum ControllerButtons : uint32_t { Trigger = 1, Secondary = 2, Menu = 4, Grip = 8, Mode = 16 };
 
     struct ControllerInput
     {
@@ -42,12 +43,15 @@ namespace
         float scroll;
         float panelX, panelY;
         uint32_t pointsAtPanel;
+        uint32_t hasInput;
+        HmdMatrix34_t gripPose, aimPose;
+        float rayLength;
     };
 
     static_assert(sizeof(HmdMatrix34_t) == 48);
     static_assert(sizeof(EyeInfo) == 64);
     static_assert(sizeof(DisplayInfo) == 136);
-    static_assert(sizeof(ControllerInput) == 28);
+    static_assert(sizeof(ControllerInput) == 132);
 
     using Init = intptr_t(__cdecl*)(EVRInitError*, EVRApplicationType);
     using Shutdown = void(__cdecl*)();
@@ -66,15 +70,19 @@ namespace
     VR_IVRCompositor_FnTable* compositor;
     GetInterface getInterface;
     VR_IVROverlay_FnTable* overlay;
+    VR_IVRRenderModels_FnTable* renderModels;
     VROverlayHandle_t panel;
     HmdMatrix34_t panelTransform;
-    constexpr float panelWidth = 1.5f;
+    constexpr float panelWidth = 0.9f;
+    TrackedDeviceIndex_t panelGrabDevice = k_unTrackedDeviceIndexInvalid;
+    HmdMatrix34_t panelFromGrip;
     float panelHeight;
     ComPtr<ID3D11Texture2D> panelTexture;
     int pendingPanelEvent;
     EVROverlayError panelError;
     TrackedDeviceIndex_t activeController = k_unTrackedDeviceIndexInvalid;
     std::array<std::optional<uint32_t>, k_unMaxTrackedDeviceCount> previousControllerButtons;
+    std::array<std::array<char, 256>, k_unMaxTrackedDeviceCount> controllerModels;
     bool initialized;
     ComPtr<ID3D11Texture2D> textures[2];
     ComPtr<ID3D11Multithread> immediateContext;
@@ -123,6 +131,7 @@ namespace
 
     void ClosePanel()
     {
+        panelGrabDevice = k_unTrackedDeviceIndexInvalid;
         pendingPanelEvent = 0;
         if (panel)
             overlay->DestroyOverlay(panel);
@@ -139,8 +148,10 @@ namespace
         pendingEvent = 0;
         ClosePanel();
         overlay = nullptr;
+        renderModels = nullptr;
         activeController = k_unTrackedDeviceIndexInvalid;
         previousControllerButtons = {};
+        controllerModels = {};
         if (compositor)
             compositor->ClearLastSubmittedFrame();
         if (initialized)
@@ -170,12 +181,59 @@ namespace
         return info;
     }
 
-    bool ReadController(TrackedDeviceIndex_t device, VRControllerState_t& state, TrackedDevicePose_t& pose)
+    HmdMatrix34_t Compose(const HmdMatrix34_t& device, const HmdMatrix34_t& component)
     {
-        return device < k_unMaxTrackedDeviceCount && vrSystem->IsTrackedDeviceConnected(device) &&
-            vrSystem->GetTrackedDeviceClass(device) == ETrackedDeviceClass_TrackedDeviceClass_Controller &&
-            vrSystem->GetControllerStateWithPose(ETrackingUniverseOrigin_TrackingUniverseSeated,
-                device, &state, sizeof(state), &pose) && pose.bDeviceIsConnected && pose.bPoseIsValid;
+        HmdMatrix34_t result{};
+        for (int row = 0; row < 3; ++row)
+        {
+            result.m[row][3] = device.m[row][3];
+            for (int column = 0; column < 4; ++column)
+                for (int axis = 0; axis < 3; ++axis)
+                    result.m[row][column] += device.m[row][axis] * component.m[axis][column];
+        }
+        return result;
+    }
+
+    HmdMatrix34_t InverseRigid(const HmdMatrix34_t& pose)
+    {
+        HmdMatrix34_t result{};
+        for (int row = 0; row < 3; ++row)
+        {
+            for (int column = 0; column < 3; ++column)
+            {
+                result.m[row][column] = pose.m[column][row];
+                result.m[row][3] -= pose.m[column][row] * pose.m[column][3];
+            }
+        }
+        return result;
+    }
+
+    char* ControllerModelName(TrackedDeviceIndex_t device)
+    {
+        auto& name = controllerModels[device];
+        if (!name[0])
+        {
+            ETrackedPropertyError error{};
+            vrSystem->GetStringTrackedDeviceProperty(device, ETrackedDeviceProperty_Prop_RenderModelName_String,
+                name.data(), static_cast<uint32_t>(name.size()), &error);
+            if (error != ETrackedPropertyError_TrackedProp_Success)
+                name[0] = '\0';
+        }
+        return name.data();
+    }
+
+    HmdMatrix34_t AimPose(TrackedDeviceIndex_t device, VRControllerState_t& state, const HmdMatrix34_t& grip)
+    {
+        if (renderModels)
+        {
+            char tip[] = "tip";
+            RenderModel_ControllerMode_State_t mode{};
+            RenderModel_ComponentState_t component{};
+            auto name = ControllerModelName(device);
+            if (*name && renderModels->GetComponentState(name, tip, &state, &mode, &component))
+                return Compose(grip, component.mTrackingToComponentLocal);
+        }
+        return grip;
     }
 
     void ProjectPanelPointer(const HmdMatrix34_t& controller, ControllerInput& input)
@@ -187,29 +245,45 @@ namespace
         // Return top-left coordinates so the point maps directly to the game window.
         const auto& p = panelTransform.m;
         const auto& c = controller.m;
-        float direction = -c[0][2] * p[0][2] - c[2][2] * p[2][2];
+        float direction = -c[0][2] * p[0][2] - c[1][2] * p[1][2] - c[2][2] * p[2][2];
         if (!(direction < -0.001f))
             return;
-        float distance = ((p[0][3] - c[0][3]) * p[0][2] + (p[2][3] - c[2][3]) * p[2][2]) / direction;
+        float distance = ((p[0][3] - c[0][3]) * p[0][2] + (p[1][3] - c[1][3]) * p[1][2] +
+            (p[2][3] - c[2][3]) * p[2][2]) / direction;
         if (!(distance > 0))
             return;
         float x = c[0][3] - c[0][2] * distance - p[0][3];
         float y = c[1][3] - c[1][2] * distance - p[1][3];
         float z = c[2][3] - c[2][2] * distance - p[2][3];
-        input.panelX = 0.5f + (x * p[0][0] + z * p[2][0]) / panelWidth;
-        input.panelY = 0.5f - y / panelHeight;
+        input.panelX = 0.5f + (x * p[0][0] + y * p[1][0] + z * p[2][0]) / panelWidth;
+        input.panelY = 0.5f - (x * p[0][1] + y * p[1][1] + z * p[2][1]) / panelHeight;
         input.pointsAtPanel = input.panelX >= 0 && input.panelX < 1 && input.panelY >= 0 && input.panelY < 1;
+        if (input.pointsAtPanel)
+            input.rayLength = distance;
     }
 
-    ControllerInput ReadControllerInput(TrackedDeviceIndex_t device, const VRControllerState_t& state,
-        const TrackedDevicePose_t& pose)
+    ControllerInput ReadControllerInput(TrackedDeviceIndex_t device, const TrackedDevicePose_t& pose, bool canReadButtons)
     {
         ControllerInput input{};
         input.device = device;
+        input.gripPose = pose.mDeviceToAbsoluteTracking;
         input.panelX = input.panelY = std::numeric_limits<float>::quiet_NaN();
+        input.rayLength = 1.5f;
+        VRControllerState_t state{};
+        input.hasInput = canReadButtons && vrSystem->GetControllerState(device, &state, sizeof(state));
+        input.aimPose = AimPose(device, state, input.gripPose);
+        ProjectPanelPointer(input.aimPose, input);
+        auto& previous = previousControllerButtons[device];
+        if (!input.hasInput)
+        {
+            previous.reset();
+            return input;
+        }
+
         auto pressed = [&](EVRButtonId button) { return (state.ulButtonPressed & (uint64_t{1} << button)) != 0; };
         if (pressed(EVRButtonId_k_EButton_SteamVR_Trigger)) input.buttons |= Trigger;
-        if (pressed(EVRButtonId_k_EButton_Grip) || pressed(EVRButtonId_k_EButton_A)) input.buttons |= Secondary;
+        if (pressed(EVRButtonId_k_EButton_Grip)) input.buttons |= Grip;
+        if (pressed(EVRButtonId_k_EButton_A)) input.buttons |= Secondary;
         if (pressed(EVRButtonId_k_EButton_ApplicationMenu)) input.buttons |= Menu;
 
         float trigger = 0;
@@ -221,24 +295,31 @@ namespace
             auto type = vrSystem->GetInt32TrackedDeviceProperty(device, property, nullptr);
             auto button = static_cast<EVRButtonId>(EVRButtonId_k_EButton_Axis0 + axis);
             if (type == EVRControllerAxisType_k_eControllerAxis_Trigger)
-                trigger = state.rAxis[axis].x;
+            {
+                if (button == EVRButtonId_k_EButton_Axis2)
+                {
+                    float threshold = (previous.value_or(0) & Grip) ? 0.4f : 0.65f;
+                    if (pressed(button) || state.rAxis[axis].x >= threshold) input.buttons |= Grip;
+                }
+                else
+                    trigger = std::max(trigger, state.rAxis[axis].x);
+            }
             else if (type == EVRControllerAxisType_k_eControllerAxis_Joystick)
             {
                 hasStick = true;
                 input.scroll = state.rAxis[axis].y;
-                if (pressed(button)) input.buttons |= Menu;
+                if (pressed(button)) input.buttons |= Mode;
             }
             else if (type == EVRControllerAxisType_k_eControllerAxis_TrackPad)
             {
                 if (state.ulButtonTouched & (uint64_t{1} << button))
                     touchpadY = state.rAxis[axis].y;
-                if (pressed(button)) input.buttons |= Menu;
+                if (pressed(button)) input.buttons |= Mode;
             }
         }
         if (!hasStick)
             input.scroll = touchpadY;
 
-        auto& previous = previousControllerButtons[device];
         float triggerThreshold = (previous.value_or(0) & Trigger) ? 0.4f : 0.65f;
         if (trigger >= triggerThreshold)
             input.buttons |= Trigger;
@@ -246,7 +327,6 @@ namespace
         if (previous)
             input.clicked = input.buttons & ~*previous;
         previous = input.buttons;
-        ProjectPanelPointer(pose.mDeviceToAbsoluteTracking, input);
         return input;
     }
 
@@ -283,7 +363,9 @@ namespace
         for (size_t i = 0; i < _countof(eyes); ++i)
         {
             Texture_t texture{textures[i].Get(), ETextureType_TextureType_DirectX, EColorSpace_ColorSpace_Auto};
-            VRTextureBounds_t bounds{0.0f, 0.0f, 1.0f, 1.0f};
+            // Unity's D3D11 camera targets are vertically flipped in the
+            // compositor. The UI camera has its own overlay texture bounds.
+            VRTextureBounds_t bounds{0.0f, 1.0f, 1.0f, 0.0f};
             auto result = compositor->Submit(eyes[i], &texture, &bounds, EVRSubmitFlags_Submit_Default);
             if (result != noError)
             {
@@ -354,6 +436,8 @@ AL_VR_EXPORT int AlVrStart(const wchar_t* libraryPath, DisplayInfo* info)
         CloseSession();
         return 0;
     }
+
+    renderModels = GetFunctionTable<VR_IVRRenderModels_FnTable>(IVRRenderModels_Version, false);
 
     compositor->SetTrackingSpace(ETrackingUniverseOrigin_TrackingUniverseSeated);
     vrSystem->GetRecommendedRenderTargetSize(&info->width, &info->height);
@@ -482,24 +566,27 @@ AL_VR_EXPORT int AlVrReadController(ControllerInput* input)
 {
     std::lock_guard lock(sessionMutex);
     *input = {};
-    if (!vrSystem || !vrSystem->IsInputAvailable())
-    {
-        previousControllerButtons = {};
+    if (!vrSystem)
         return 0;
-    }
 
+    bool canReadButtons = vrSystem->IsInputAvailable();
+    TrackedDevicePose_t poses[k_unMaxTrackedDeviceCount]{};
+    vrSystem->GetDeviceToAbsoluteTrackingPose(ETrackingUniverseOrigin_TrackingUniverseSeated, 0, poses, _countof(poses));
     ControllerInput clicked{};
     for (TrackedDeviceIndex_t device = 1; device < k_unMaxTrackedDeviceCount; ++device)
     {
-        VRControllerState_t state{};
-        TrackedDevicePose_t pose{};
-        if (!ReadController(device, state, pose))
+        const auto& pose = poses[device];
+        if (!pose.bDeviceIsConnected || !pose.bPoseIsValid ||
+            vrSystem->GetTrackedDeviceClass(device) != ETrackedDeviceClass_TrackedDeviceClass_Controller)
         {
             previousControllerButtons[device].reset();
+            if (!pose.bDeviceIsConnected)
+                controllerModels[device][0] = '\0';
             continue;
         }
-        auto sample = ReadControllerInput(device, state, pose);
-        if (!input->device || device == activeController)
+        auto sample = ReadControllerInput(device, pose, canReadButtons);
+        if (!input->device || sample.hasInput > input->hasInput ||
+            (sample.hasInput == input->hasInput && device == activeController))
             *input = sample;
         // Polling cannot order two presses in the same frame. Prefer the
         // active hand if it clicked too, then the first tracked index.
@@ -513,21 +600,47 @@ AL_VR_EXPORT int AlVrReadController(ControllerInput* input)
     return input->device != 0;
 }
 
+// The runtime owns the model until the caller copies it and releases it.
+// 0 means it is still loading, -1 means the device has no usable model.
+AL_VR_EXPORT int AlVrLoadControllerModel(uint32_t device, RenderModel_t** model)
+{
+    std::lock_guard lock(sessionMutex);
+    *model = nullptr;
+    if (!renderModels || device >= k_unMaxTrackedDeviceCount)
+        return -1;
+    auto name = ControllerModelName(device);
+    if (!*name)
+        return -1;
+    auto result = renderModels->LoadRenderModel_Async(name, model);
+    if (result == EVRRenderModelError_VRRenderModelError_Loading)
+        return 0;
+    return result == EVRRenderModelError_VRRenderModelError_None && *model ? 1 : -1;
+}
+
+AL_VR_EXPORT void AlVrFreeControllerModel(RenderModel_t* model)
+{
+    std::lock_guard lock(sessionMutex);
+    if (renderModels && model)
+        renderModels->FreeRenderModel(model);
+}
+
 AL_VR_EXPORT void AlVrSuspendControllerInput()
 {
     std::lock_guard lock(sessionMutex);
     previousControllerButtons = {};
+    panelGrabDevice = k_unTrackedDeviceIndexInvalid;
 }
 
-// Opens a panel anchored to the current seated head position and heading.
-// 0 means the headset has no usable pose yet, -1 means overlays are unavailable.
+// Opens beside the active controller, upright in the headset's heading.
+// Wait for a tracked controller rather than spawning an unreachable panel.
 AL_VR_EXPORT int AlVrOpenPanel()
 {
     std::lock_guard lock(sessionMutex);
     if (!vrSystem)
         return -1;
-    TrackedDevicePose_t head{};
-    vrSystem->GetDeviceToAbsoluteTrackingPose(ETrackingUniverseOrigin_TrackingUniverseSeated, 0, &head, 1);
+    TrackedDevicePose_t poses[k_unMaxTrackedDeviceCount]{};
+    vrSystem->GetDeviceToAbsoluteTrackingPose(ETrackingUniverseOrigin_TrackingUniverseSeated, 0, poses, _countof(poses));
+    const auto& head = poses[0];
     if (!head.bDeviceIsConnected || !head.bPoseIsValid)
         return 0;
 
@@ -535,6 +648,9 @@ AL_VR_EXPORT int AlVrOpenPanel()
         overlay = GetFunctionTable<VR_IVROverlay_FnTable>(IVROverlay_Version, false);
     if (!overlay)
         return -1;
+    if (activeController >= k_unMaxTrackedDeviceCount || !poses[activeController].bDeviceIsConnected ||
+        !poses[activeController].bPoseIsValid)
+        return 0;
     if (!panel)
     {
         char key[] = "com.al-vr.steamvr.game-panel";
@@ -544,8 +660,11 @@ AL_VR_EXPORT int AlVrOpenPanel()
             panel = 0;
             return -1;
         }
+        VRTextureBounds_t bounds{0.0f, 1.0f, 1.0f, 0.0f};
         if (overlay->SetOverlayWidthInMeters(panel, panelWidth) != EVROverlayError_VROverlayError_None ||
-            overlay->SetOverlayFlag(panel, VROverlayFlags_IgnoreTextureAlpha, true) != EVROverlayError_VROverlayError_None)
+            overlay->SetOverlayTextureBounds(panel, &bounds) != EVROverlayError_VROverlayError_None ||
+            overlay->SetOverlayFlag(panel, VROverlayFlags_IgnoreTextureAlpha, false) != EVROverlayError_VROverlayError_None ||
+            overlay->SetOverlayFlag(panel, VROverlayFlags_IsPremultiplied, true) != EVROverlayError_VROverlayError_None)
         {
             ClosePanel();
             return -1;
@@ -556,8 +675,10 @@ AL_VR_EXPORT int AlVrOpenPanel()
     float length = std::hypot(m[0][2], m[2][2]);
     float x = length > 0.001f ? m[0][2] / length : 0;
     float z = length > 0.001f ? m[2][2] / length : 1;
-    constexpr float distance = 1.35f;
-    panelTransform = {{{z, 0, x, m[0][3] - x * distance}, {0, 1, 0, m[1][3]}, {-x, 0, z, m[2][3] - z * distance}}};
+    const auto& hand = poses[activeController].mDeviceToAbsoluteTracking.m;
+    constexpr float distance = 0.55f;
+    panelGrabDevice = k_unTrackedDeviceIndexInvalid;
+    panelTransform = {{{z, 0, x, hand[0][3] - x * distance}, {0, 1, 0, hand[1][3]}, {-x, 0, z, hand[2][3] - z * distance}}};
     if (overlay->SetOverlayTransformAbsolute(panel, ETrackingUniverseOrigin_TrackingUniverseSeated, &panelTransform) !=
             EVROverlayError_VROverlayError_None)
     {
@@ -565,6 +686,33 @@ AL_VR_EXPORT int AlVrOpenPanel()
         return -1;
     }
     return 1;
+}
+
+// Preserve the initial hand-to-panel offset while moving and rotating the hand.
+AL_VR_EXPORT int AlVrDragPanel(uint32_t device, int held)
+{
+    std::lock_guard lock(sessionMutex);
+    if (!held || !panel || !vrSystem || device >= k_unMaxTrackedDeviceCount)
+    {
+        panelGrabDevice = k_unTrackedDeviceIndexInvalid;
+        return 0;
+    }
+    TrackedDevicePose_t poses[k_unMaxTrackedDeviceCount]{};
+    vrSystem->GetDeviceToAbsoluteTrackingPose(ETrackingUniverseOrigin_TrackingUniverseSeated, 0, poses, _countof(poses));
+    const auto& pose = poses[device];
+    if (!pose.bDeviceIsConnected || !pose.bPoseIsValid || !vrSystem->IsInputAvailable())
+    {
+        panelGrabDevice = k_unTrackedDeviceIndexInvalid;
+        return 0;
+    }
+    if (panelGrabDevice != device)
+    {
+        panelFromGrip = Compose(InverseRigid(pose.mDeviceToAbsoluteTracking), panelTransform);
+        panelGrabDevice = device;
+    }
+    panelTransform = Compose(pose.mDeviceToAbsoluteTracking, panelFromGrip);
+    panelError = overlay->SetOverlayTransformAbsolute(panel, ETrackingUniverseOrigin_TrackingUniverseSeated, &panelTransform);
+    return panelError == EVROverlayError_VROverlayError_None ? 1 : -1;
 }
 
 AL_VR_EXPORT int AlVrQueuePanel(ID3D11Resource* resource)

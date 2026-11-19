@@ -17,6 +17,7 @@ namespace AL_VR;
 public sealed class Plugin : BasePlugin
 {
     public const string Id = "com.al-vr.steamvr";
+    internal const string StartupArgument = "--al-vr";
     internal static Plugin Instance = null!;
     internal ConfigEntry<KeyCode> Toggle = null!;
     internal ConfigEntry<KeyCode> Recenter = null!;
@@ -30,7 +31,7 @@ public sealed class Plugin : BasePlugin
         Instance = this;
         Toggle = Config.Bind("Controls", "Toggle", KeyCode.F9, "Start or stop the SteamVR session.");
         Recenter = Config.Bind("Controls", "Recenter", KeyCode.F10, "Align the headset's current position and heading with the game camera.");
-        EyeResolution = Config.Bind("Rendering", "Eye Resolution Scale", 0.75f,
+        EyeResolution = Config.Bind("Rendering", "Eye Resolution Scale", 1.0f,
             new ConfigDescription("Scale SteamVR's recommended width and height for each eye at session start.",
                 new AcceptableValueRange<float>(0.25f, 1.5f)));
         WorldUnitsPerMeter = Config.Bind("Rendering", "World Units Per Meter", 1.0f,
@@ -41,7 +42,7 @@ public sealed class Plugin : BasePlugin
         if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Direct3D11)
         {
             controller = AddComponent<VrController>();
-            Log.LogInfo("AL SteamVR ready. Start SteamVR with your headset connected and press F9 in game.");
+            Log.LogInfo($"AL SteamVR ready. Launch with {StartupArgument} to start in VR, or press F9 in game.");
         }
         else
             Log.LogInfo("AL SteamVR requires Direct3D 11. Launch with -force-d3d11.");

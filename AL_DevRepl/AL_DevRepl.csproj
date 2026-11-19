@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GamePath Condition="'$(GamePath)' == ''">H:\Programs\gal\amanatsu-location</GamePath>
+    <BepInExPath>$(GamePath)/BepInEx</BepInExPath>
+    <InteropPath Condition="'$(InteropPath)' == ''">$(BepInExPath)/interop-AmanatsuLocation/interop</InteropPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="$(BepInExPath)/core/BepInEx.Core.dll" Private="false" />
+    <Reference Include="$(BepInExPath)/core/BepInEx.Unity.IL2CPP.dll" Private="false" />
+    <Reference Include="$(BepInExPath)/core/Il2CppInterop.Runtime.dll" Private="false" />
+    <Reference Include="$(InteropPath)/Il2Cppmscorlib.dll" Private="false" />
+    <Reference Include="$(InteropPath)/UnityEngine.CoreModule.dll" Aliases="unity" Private="false" />
+  </ItemGroup>
+</Project>

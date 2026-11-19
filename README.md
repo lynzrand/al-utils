@@ -1,104 +1,43 @@
-# AL H Utils
+# Amanatsu Location plugins
 
-Camera and scene-control utilities for **Amanatsu Location**, with POV inspired by
-[FairBear/AI_PovX](https://github.com/FairBear/AI_PovX), reference commit
-`03d44bcb4a0ffe5497a101913f37279ec4e10bda`.
+Download the Windows x64 archives you want from [Releases](https://github.com/lynzrand/al-h-utils/releases). Install BepInEx 6 IL2CPP, run the game once, then exit and extract each archive beside `AmanatsuLocation.exe`. The archives include their `BepInEx` directory layout. The plugins were built against Amanatsu Location 1.0.4, Unity 6000.0.65f1 and BepInEx 6.0.0-be.788.
 
-Targets the installed game's **Unity 6000.0.65f1**, **BepInEx 6.0.0-be.788 IL2CPP**,
-and **.NET 6**. This is a new IL2CPP integration; the original AI-Syoujyo DLL cannot
-be loaded into this game.
+## AL H Utils
 
-The public project name is `al-h-utils`. For upgrades, the existing DLL name
-`AL_PovX.dll` and plugin/config ID are retained to avoid duplicate plugins or
-losing existing settings.
+AL H Utils places the camera at a character’s eyes and follows their animated head. It also adds configurable keys for scene controls. The camera was inspired by FairBear and 2155X’s [PoVX](https://github.com/FairBear/AI_PovX).
 
-## Build and install
+Press **Comma** to enter or leave POV, **Period** to switch characters and **Home** to recenter. Hold the right mouse button to look around. Bindings are in `BepInEx/config/com.al-povx.camera.cfg`. [All controls](docs/key-bindings.md)
 
-Requires a .NET SDK with the .NET 6 targeting pack, and a game installation that
-has been run once with BepInEx to generate `BepInEx/interop`.
+## AL Scene Lighting
 
-```powershell
-dotnet build -c Release '-p:GamePath=H:\Programs\amanatsu-location'
-```
+Scene Lighting lets the map’s lights shade characters. Each light contributes a toon band to skin and fabric, hair picks up painted highlights from the light direction, and painted body oil uses a smoother mask for wet highlights.
 
-Exit the game, then install using:
+Extract the archive, then run **Prepare AL Lighting.cmd** once from the game folder before starting the game. It uses 64-bit Python 3.11 to build and verify the shader bundle from your 1.0.4 game files. The lighting loads at startup. Press **F7** in a scene to compare it with the original lighting.
 
-```powershell
-./tools/install.ps1 -GamePath 'H:\Programs\amanatsu-location'
-```
+## AL SteamVR
 
-The installer builds, backs up any previous AL_PovX DLL into this project's
-`artifacts/backups`, copies only `AL_PovX.dll` into
-`BepInEx/plugins/AL_PovX`, and checks the installed SHA-256 hash. Game and loader
-assemblies are local build references and are not redistributed. To uninstall,
-exit the game and remove `BepInEx/plugins/AL_PovX/AL_PovX.dll`.
+AL SteamVR renders separate views for each eye and uses the headset pose to place the camera. A controller-operated panel gives access to the game’s menus and HUD. Headset and controller behavior remain experimental.
 
-## Controls
+Start SteamVR with the headset connected, then run **Launch AL VR.bat** from the game folder. **F9** toggles VR, **F10** recenters, and the controller’s application-menu button toggles the panel. [Controller guide](AL_VR/README.md)
 
-| Input | Action |
-| --- | --- |
-| Comma | Toggle POV on/off |
-| Period | Cycle active characters, starting with the player when available |
-| Q / W / E / R (POV) | Look at and track the regular scene camera's selected body-part target |
-| Hold right mouse button | Look around |
-| Hold Z | Zoom |
-| Home | Stop target tracking and recenter to the head orientation |
-| Left Control | Toggle cursor release / mouse-look suspension |
-| Escape | Exit POV |
-| Hold Space | Repeat the scene's Stronger / 激しく button (every 0.15 seconds) |
-| D | Toggle the scene's male gauge lock |
-| F | Toggle the scene's female gauge lock |
+## AL Performance
 
-Scene shortcuts work with POV on or off. They use the game's existing button
-and lock toggles, respecting their active/interactable state. They do nothing
-outside a loaded scene, while paused, while typing, or while the app is unfocused.
-Releasing Space stops repetition. D/F toggle once per press and leave the native
-lock state in place until toggled again or reset by the game.
-The `Scene Hotkeys` config section contains these keys and the repeat interval.
+AL Performance exposes internal render scale, MSAA and shadow filtering. Its optional benchmark records frame times and rendering settings so you can compare the same scene across configurations.
 
-The pointer stays available by default. Enable `Lock Cursor` for mouse look
-without holding a button. Hotkeys are ignored while a Unity or TMP text field
-has focus, except the configured POV exit key. Losing application focus exits POV.
+Start the game once, then edit `BepInEx/config/com.al-povx.performance.cfg` with the game closed. For a benchmark, set `AL_PERF_CONTROL` to an absolute JSON control-file path before launch and use the supplied sweep script. [Configuration and benchmark examples](AL_Performance/README.md)
 
-Configuration is generated at `BepInEx/config/com.al-povx.camera.cfg` on first
-load. It includes key bindings, sensitivity, normal/zoom FOV, near clipping,
-eye offsets, head visibility, pitch/yaw limits, and animated head tracking.
-Edit the file while the game is closed. By default, `Follow Head Position` and `Follow Head Rotation` are true: the camera follows the eyes and applies mouse-look angles relative to the current animated head orientation. Home recenters. A scene pose change automatically clears look offsets and target tracking once the transition completes; disable `Reset On Pose Change` to opt out. Q/W/E/R enable tracking of the regular scene camera target in supported scenes, using the native key mapping. Home, moving the mouse while mouse look is engaged, switching POV characters, or leaving the scene cancels tracking.
+## AL Dev REPL
 
-## Integration and scope
+The development REPL evaluates C# on Unity’s main thread through a Windows named pipe restricted to the account running the game. It keeps variables alive between commands so you can inspect a scene or compare material settings interactively.
 
-The plugin uses `Character.Human.List`, prioritizes `Manager.Game`'s player,
-and follows the midpoint of `Human.Face.eyeLookCtrl`'s eye bones. It falls back
-to the head bone if eye transforms are unavailable. Offsets are in world units
-along the animated head axes; these positional offsets follow the head independently of the viewing direction.
+Install Runtime Unity Editor for its C# compiler. Launch the game with `--al-repl`, then run `BepInEx/plugins/AL_DevRepl/Invoke.ps1 ':ping'` from PowerShell in the game folder. An empty `EnableNextLaunch` file beside the plugin also enables one launch. [Command examples](AL_DevRepl/README.md)
 
-The Unity render-pipeline begin/end camera callbacks apply the POV to
-`Camera.main` and restore position, rotation, FOV and near clip after rendering. Head and hair meshes remain hidden throughout POV, including other cameras and mirrors. Their previous renderer visibility is restored on exit or character switch; bone scale is never changed. The plugin exits when its character is unloaded/reloaded or the
-main camera changes; press Comma to enter POV again in the new scene.
+## AL RenderDoc Preloader
 
-This implements the camera portion of PoVX: eye tracking, character cycling,
-look, zoom, offsets and head hiding. AI-Syoujyo-specific body steering,
-head-before-body rotation, merchant visibility and housing logic are not ported.
-Movement remains controlled by Amanatsu Location. Other mods that override the
-same camera during render callbacks may conflict. Scenes using an untagged
-camera instead of `Camera.main` are not supported.
+This optional BepInEx patcher loads RenderDoc early enough to capture the game’s graphics device. It works with AL Performance’s frame-capture command.
 
-## Verification
-
-Run `dotnet run --project tests/RepeatGate.Tests.csproj -c Release` for the
-repeat timing and pose-transition reset checks.
-
-See [the validation notes](docs/validation.md) for build/runtime evidence and
-the in-game acceptance checklist. A successful build alone does not establish
-that eye alignment, animation or render ordering is correct in every scene.
+Install x64 RenderDoc, set `AL_PERF_RENDERDOC=1` and `AL_PERF_RENDERDOC_DLL` to the absolute path of its `renderdoc.dll`, then launch the game. [Capture instructions](AL_Performance/RenderDocPreloader/README.md)
 
 ## License
 
-GPL-3.0; see [LICENSE](LICENSE). The original PoVX project is by FairBear and
-2155X. This adaptation retains its licensing and credits; proprietary game
-assemblies and assets are not included.
-
-
-
-
-See [key-binding configuration](docs/key-bindings.md) for all settings and an editable example.
+Plugin and tooling code, including the PoVX adaptation, uses [GPL-3.0](LICENSE). Project-authored shader code uses [MPL-2.0](LICENSES/MPL-2.0.txt). Game assets are supplied by the player’s installation. Valve’s OpenVR notice accompanies the VR package.

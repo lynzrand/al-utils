@@ -16,6 +16,10 @@ public sealed class VrController : MonoBehaviour
 
     private EyeCamera? left, right;
     private GamePanel? gamePanel;
+    private ControllerVisual? controllerVisual;
+    private readonly PlayerView playerView = new();
+    private readonly CameraGrab cameraGrab = new();
+    private bool firstPerson;
     private Camera? source;
     private bool sessionStarted, recenterRequested, loggedSubmit;
     private Vector3 trackingOrigin;
@@ -23,70 +27,65 @@ public sealed class VrController : MonoBehaviour
     private IntPtr submitCallback;
     private bool leftRendered, rightRendered;
     private Il2CppSystem.Action<ScriptableRenderContext, Camera>? onEyeRendered;
+    private Il2CppSystem.Action<ScriptableRenderContext, Camera>? onEyeRendering;
+    private readonly List<UnityEngine.Canvas> hiddenCanvases = new();
     private readonly string? smokeLibrary = Environment.GetEnvironmentVariable("AL_VR_SMOKE_RUNTIME");
-    private bool smokeStarted, previousRunInBackground;
+    private bool startAtLaunch = Environment.GetCommandLineArgs().Contains(Plugin.StartupArgument, StringComparer.OrdinalIgnoreCase);
+    private bool previousRunInBackground;
     private float smokeDeadline;
-    private Camera? smokeSource;
+    private Camera? fallbackSource;
     private bool restoreBackground;
 
     public void Start()
     {
         onEyeRendered = (Il2CppSystem.Action<ScriptableRenderContext, Camera>)AfterCamera;
         RenderPipelineManager.add_endCameraRendering(onEyeRendered);
+        onEyeRendering = (Il2CppSystem.Action<ScriptableRenderContext, Camera>)BeforeCamera;
+        RenderPipelineManager.add_beginCameraRendering(onEyeRendering);
     }
 
     public void LateUpdate()
     {
         try
         {
-            bool toggle = Application.isFocused && Input.GetKeyDown(Plugin.Instance.Toggle.Value);
-            if (!sessionStarted && !toggle && (smokeLibrary == null || smokeStarted))
-                return;
-
-            var main = Camera.main;
-            bool canRender = IsStereoSource(main);
-            if (!canRender && smokeLibrary != null && (!smokeStarted || sessionStarted) &&
-                GraphicsSettings.currentRenderPipeline?.TryCast<UniversalRenderPipelineAsset>() != null)
-            {
-                // Title screens can switch between cameras that only render UI.
-                // Use a dedicated perspective source for the integration smoke.
-                if (!smokeSource)
-                {
-                    var owner = new GameObject("AL SteamVR Smoke Source");
-                    Object.DontDestroyOnLoad(owner);
-                    smokeSource = owner.AddComponent<Camera>();
-                    smokeSource.enabled = false;
-                }
-                main = smokeSource;
-                canRender = true;
-            }
+            bool focused = Application.isFocused;
+            bool toggle = focused && Input.GetKeyDown(Plugin.Instance.Toggle.Value);
             if (toggle && sessionStarted)
             {
                 StopSession();
                 return;
             }
 
-            if (gamePanel?.Update(Application.isFocused) == true)
-                recenterRequested = true;
-            if (sessionStarted && smokeStarted && FinishSmoke())
+            if (!sessionStarted && !toggle && !startAtLaunch)
                 return;
-            if (!canRender)
-            {
-                DisableEyes();
-                if (toggle)
-                    Plugin.Instance.Log.LogInfo("AL SteamVR needs an active perspective camera in URP. Try again after loading a scene.");
-                return;
-            }
+
+            bool usesUrp = GraphicsSettings.currentRenderPipeline?.TryCast<UniversalRenderPipelineAsset>() != null;
+            var main = usesUrp ? Camera.main : null;
+            if (!main || !main!.isActiveAndEnabled || main.orthographic)
+                main = null;
             if (!sessionStarted)
             {
-                smokeStarted = smokeLibrary != null;
-                StartSession(smokeLibrary ?? Plugin.Instance.OpenVrLibrary.Value);
+                bool showPanel = startAtLaunch || main == null;
+                startAtLaunch = false;
+                StartSession(smokeLibrary ?? Plugin.Instance.OpenVrLibrary.Value, showPanel);
             }
 
-            if (source != main || (Application.isFocused && Input.GetKeyDown(Plugin.Instance.Recenter.Value)))
+            OpenVrController? hand = OpenVr.AlVrReadController(out var controller) != 0 ? controller : null;
+            bool recenter = gamePanel!.Update(hand, focused);
+            if (recenter || (focused && Input.GetKeyDown(Plugin.Instance.Recenter.Value)))
+            {
+                gamePanel.Recenter();
+                playerView.RequestReset();
                 recenterRequested = true;
-            source = main;
-            PrepareFrame(main!);
+            }
+            if (smokeLibrary != null && FinishSmoke())
+                return;
+
+            var nextSource = usesUrp ? main ?? GetFallbackSource() : null;
+            if (source != nextSource)
+                recenterRequested = true;
+            source = nextSource;
+            PrepareFrame(nextSource, hand);
         }
         catch (Exception error)
         {
@@ -95,11 +94,26 @@ public sealed class VrController : MonoBehaviour
     }
 
     [HideFromIl2Cpp]
-    private static bool IsStereoSource(Camera? camera) => camera && camera!.isActiveAndEnabled && !camera.orthographic &&
-        GraphicsSettings.currentRenderPipeline?.TryCast<UniversalRenderPipelineAsset>() != null;
+    private Camera GetFallbackSource()
+    {
+        if (fallbackSource)
+            return fallbackSource!;
+
+        // Title and loading screens can lack a perspective main camera. Give
+        // the compositor a black scene behind the panel without drawing on desktop.
+        var owner = new GameObject("AL SteamVR Panel Background");
+        Object.DontDestroyOnLoad(owner);
+        fallbackSource = owner.AddComponent<Camera>();
+        fallbackSource.enabled = false;
+        fallbackSource.nearClipPlane = 0.03f;
+        fallbackSource.cullingMask = 0;
+        fallbackSource.clearFlags = CameraClearFlags.SolidColor;
+        fallbackSource.backgroundColor = Color.black;
+        return fallbackSource;
+    }
 
     [HideFromIl2Cpp]
-    private void StartSession(string library)
+    private void StartSession(string library, bool showPanel)
     {
         string path = OpenVr.FindLibrary(library);
         if (OpenVr.AlVrStart(path, out var display) == 0)
@@ -116,9 +130,10 @@ public sealed class VrController : MonoBehaviour
         right = new EyeCamera("AL SteamVR Right Eye", display.Right, width, height);
         BindTargets();
         submitCallback = OpenVr.AlVrRenderEvent();
-        gamePanel = new GamePanel(submitCallback);
+        gamePanel = new GamePanel(submitCallback, showPanel);
+        controllerVisual = new ControllerVisual();
         this.StartCoroutine(gamePanel.CaptureFrames());
-        if (smokeStarted)
+        if (smokeLibrary != null)
         {
             previousRunInBackground = Application.runInBackground;
             Application.runInBackground = true;
@@ -138,13 +153,13 @@ public sealed class VrController : MonoBehaviour
     }
 
     [HideFromIl2Cpp]
-    private void PrepareFrame(Camera main)
+    private void PrepareFrame(Camera? main, OpenVrController? hand)
     {
         DisableEyes();
         int result = OpenVr.AlVrBeginFrame(out var trackedHead);
         if (result < 0)
             throw new InvalidOperationException(OpenVr.LastError());
-        if (result == 0)
+        if (result == 0 || main == null)
             return;
 
         if (!loggedSubmit && OpenVr.AlVrSubmittedFrames() > 0)
@@ -161,8 +176,13 @@ public sealed class VrController : MonoBehaviour
         }
 
         Quaternion rotation = trackedHead.Rotation;
+        firstPerson = playerView.Update(main, out bool playerChanged);
+        recenterRequested |= playerChanged;
+        if (playerChanged)
+            Plugin.Instance.Log.LogInfo(firstPerson ? "AL SteamVR anchored to the player's eyes." : "AL SteamVR returned to the scene camera anchor.");
         if (recenterRequested)
         {
+            cameraGrab.Reset();
             trackingOrigin = trackedHead.Position;
             var forward = rotation * Vector3.forward;
             float yaw = Mathf.Atan2(forward.x, forward.z) * Mathf.Rad2Deg;
@@ -175,13 +195,35 @@ public sealed class VrController : MonoBehaviour
         var cameraTransform = main.transform;
         var gameForward = cameraTransform.forward;
         var gameHeading = Quaternion.Euler(0, Mathf.Atan2(gameForward.x, gameForward.z) * Mathf.Rad2Deg, 0);
+        var anchor = firstPerson ? playerView.Position : cameraTransform.position;
+        if (firstPerson) gameHeading = playerView.Heading;
         var trackingToWorld = gameHeading * trackingHeadingInverse;
         float worldScale = Plugin.Instance.WorldUnitsPerMeter.Value;
-        var headPosition = cameraTransform.position + trackingToWorld * ((trackedHead.Position - trackingOrigin) * worldScale);
+        if (gamePanel!.MoveCameraMode && Application.isFocused && hand is { HasInput: true } grab && !grab.MenuPressed)
+            cameraGrab.Update(grab.Device, grab.GripPressed, grab.GripClicked, grab.GripPose.Position, grab.GripPose.Rotation,
+                anchor, trackingOrigin, trackingToWorld, worldScale);
+        else
+            cameraGrab.Release();
+        trackingToWorld = cameraGrab.Rotation(trackingToWorld);
+        anchor += cameraGrab.Offset;
+        var headPosition = anchor + trackingToWorld * ((trackedHead.Position - trackingOrigin) * worldScale);
         var headRotation = trackingToWorld * rotation;
         var sourceUrp = main.GetComponent<UniversalAdditionalCameraData>();
         left.SetView(main, sourceUrp, headPosition, headRotation, worldScale, main.depth - 2);
         right!.SetView(main, sourceUrp, headPosition, headRotation, worldScale, main.depth - 1);
+        if (firstPerson)
+        {
+            left.SetNearClip(0.03f * worldScale);
+            right.SetNearClip(0.03f * worldScale);
+        }
+        if (hand is { } controller)
+        {
+            int layer = main.cullingMask == 0 ? 0 : System.Numerics.BitOperations.TrailingZeroCount((uint)main.cullingMask);
+            left.Camera.cullingMask |= 1 << layer;
+            right.Camera.cullingMask |= 1 << layer;
+            var worldOrigin = anchor - trackingToWorld * (trackingOrigin * worldScale);
+            controllerVisual!.Draw(controller, gamePanel!.IsOpen, gamePanel.MoveCameraMode, left.Camera, right.Camera, worldOrigin, trackingToWorld, worldScale, layer);
+        }
     }
 
     [HideFromIl2Cpp]
@@ -191,15 +233,50 @@ public sealed class VrController : MonoBehaviour
         bool panelReady = OpenVr.AlVrPanelReady() != 0;
         if (submitted >= 30 && panelReady)
         {
+            UnityRenderSmoke.Run(left!, right!);
             Plugin.Instance.Log.LogInfo($"AL SteamVR smoke passed: {submitted} stereo frames and a game panel accepted by the test compositor.");
             StopSession();
             return true;
         }
         if (Time.unscaledTime >= smokeDeadline)
             throw new InvalidOperationException($"Smoke timed out after {submitted} stereo frames. Game panel submitted: {panelReady}.");
-        if (submitted > 0 && !gamePanel!.IsOpen && gamePanel.OpenAtHead() < 0)
-            throw new InvalidOperationException("The smoke runtime could not open the game panel.");
         return false;
+    }
+
+    [HideFromIl2Cpp]
+    private void BeforeCamera(ScriptableRenderContext context, Camera camera)
+    {
+        if (left == null || right == null || (camera != left.Camera && camera != right.Camera))
+            return;
+        try
+        {
+            (camera == left.Camera ? left : right).PreparePostProcessing();
+            if (firstPerson) playerView.HideHead(camera.transform.position, 0.25f * Plugin.Instance.WorldUnitsPerMeter.Value);
+        }
+        catch (Exception error)
+        {
+            Fail(error);
+            return;
+        }
+        // Screen-space camera canvases can otherwise also appear in the eye
+        // frusta. Only the panel should carry 2D UI; world-space UI stays in 3D.
+        foreach (var canvas in Object.FindObjectsOfType<UnityEngine.Canvas>())
+            if (canvas.isActiveAndEnabled && canvas.isRootCanvas && canvas.renderMode == UnityEngine.RenderMode.ScreenSpaceCamera)
+            {
+                hiddenCanvases.Add(canvas);
+                // Keep the canvas hierarchy alive for the game's composite UI.
+                // Overlay canvases do not render into these offscreen eye targets.
+                canvas.renderMode = UnityEngine.RenderMode.ScreenSpaceOverlay;
+            }
+    }
+
+    [HideFromIl2Cpp]
+    private void RestoreCanvases()
+    {
+        playerView.RestoreHead();
+        foreach (var canvas in hiddenCanvases)
+            if (canvas) canvas.renderMode = UnityEngine.RenderMode.ScreenSpaceCamera;
+        hiddenCanvases.Clear();
     }
 
     [HideFromIl2Cpp]
@@ -216,6 +293,8 @@ public sealed class VrController : MonoBehaviour
             rightRendered = true;
         else
             return;
+
+        RestoreCanvases();
 
         if (!leftRendered || !rightRendered)
             return;
@@ -254,8 +333,12 @@ public sealed class VrController : MonoBehaviour
     [HideFromIl2Cpp]
     private void StopSession()
     {
-        if (smokeSource) Object.Destroy(smokeSource!.gameObject);
-        smokeSource = null;
+        RestoreCanvases();
+        playerView.Reset();
+        cameraGrab.Reset();
+        firstPerson = false;
+        if (fallbackSource) Object.Destroy(fallbackSource!.gameObject);
+        fallbackSource = null;
         if (!sessionStarted)
             return;
 
@@ -267,6 +350,8 @@ public sealed class VrController : MonoBehaviour
         }
         gamePanel?.Dispose();
         gamePanel = null;
+        controllerVisual?.Dispose();
+        controllerVisual = null;
         OpenVr.AlVrStop();
         left?.Dispose();
         right?.Dispose();
@@ -283,6 +368,11 @@ public sealed class VrController : MonoBehaviour
         {
             RenderPipelineManager.remove_endCameraRendering(onEyeRendered);
             onEyeRendered = null;
+        }
+        if (onEyeRendering != null)
+        {
+            RenderPipelineManager.remove_beginCameraRendering(onEyeRendering);
+            onEyeRendering = null;
         }
     }
 

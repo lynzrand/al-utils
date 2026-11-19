@@ -3,3 +3,4 @@ obj/
 reference/
 types.txt
 artifacts/
+__pycache__/

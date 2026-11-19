@@ -22,7 +22,10 @@ internal sealed class GameWindowMouse
             X = (int)(Math.Clamp(x, 0, 1) * (client.Right - 1)),
             Y = (int)(Math.Clamp(y, 0, 1) * (client.Bottom - 1))
         };
-        return ClientToScreen(window, ref point) && WindowFromPoint(point) == window && SetCursorPos(point.X, point.Y);
+        if (!ClientToScreen(window, ref point))
+            return false;
+        IntPtr hit = WindowFromPoint(point);
+        return (hit == window || IsChild(window, hit)) && SetCursorPos(point.X, point.Y);
     }
 
     internal void PressLeft() => leftHeld = leftHeld || SendMouse(LeftDown);
@@ -83,6 +86,10 @@ internal sealed class GameWindowMouse
 
     [DllImport("user32.dll")]
     private static extern IntPtr WindowFromPoint(Point point);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsChild(IntPtr parent, IntPtr window);
 
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

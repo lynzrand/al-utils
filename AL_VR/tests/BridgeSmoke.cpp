@@ -32,6 +32,9 @@ namespace
         uint32_t device, buttons, clicked;
         float scroll, panelX, panelY;
         uint32_t pointsAtPanel;
+        uint32_t hasInput;
+        HmdMatrix34_t gripPose, aimPose;
+        float rayLength;
     };
 
     void Check(bool passed, const char* description)
@@ -75,7 +78,10 @@ int main()
     auto arm = Load<int(*)()>(bridge, "AlVrArmSubmit");
     auto controller = Load<int(*)(ControllerInput*)>(bridge, "AlVrReadController");
     auto suspend = Load<void(*)()>(bridge, "AlVrSuspendControllerInput");
+    auto loadModel = Load<int(*)(uint32_t, RenderModel_t**)>(bridge, "AlVrLoadControllerModel");
+    auto freeModel = Load<void(*)(RenderModel_t*)>(bridge, "AlVrFreeControllerModel");
     auto openPanel = Load<int(*)()>(bridge, "AlVrOpenPanel");
+    auto dragPanel = Load<int(*)(uint32_t, int)>(bridge, "AlVrDragPanel");
     auto queuePanel = Load<int(*)(ID3D11Resource*)>(bridge, "AlVrQueuePanel");
     auto closePanel = Load<void(*)()>(bridge, "AlVrClosePanel");
     auto submitted = Load<uint64_t(*)()>(bridge, "AlVrSubmittedFrames");
@@ -85,6 +91,8 @@ int main()
     auto accepted = Load<uint32_t(*)()>(mock, "MockAcceptedEyes");
     auto setControllers = Load<void(*)(uint32_t, uint32_t, bool)>(mock, "MockControllers");
     auto setButtons = Load<void(*)(uint32_t, uint64_t, float)>(mock, "MockControllerButtons");
+    auto setPose = Load<void(*)(uint32_t, HmdMatrix34_t*)>(mock, "MockControllerPose");
+    auto panelPose = Load<void(*)(HmdMatrix34_t*)>(mock, "MockPanelPose");
     auto panelFrames = Load<uint32_t(*)()>(mock, "MockPanelFrames");
 
     DisplayInfo display{};
@@ -154,7 +162,7 @@ int main()
     Check(controller(&input) == 0, "ignore connected non-controller tracker");
     setControllers(rightHand, rightHand, true);
     setButtons(2, stick, 0.8f);
-    Check(controller(&input) == 1 && input.device == 2 && input.buttons == 5 && input.clicked == 0 &&
+    Check(controller(&input) == 1 && input.device == 2 && input.buttons == 17 && input.clicked == 0 &&
         Near(input.scroll, -0.5f), "read right controller alone and use its joystick click and scroll");
     setButtons(1, grip, 0);
     setControllers(leftHand | rightHand, leftHand | rightHand, true);
@@ -162,7 +170,7 @@ int main()
     setButtons(1, 0, 0);
     Check(controller(&input) == 1 && input.device == 2, "retain active hand when the other releases its grip");
     setButtons(1, grip, 0);
-    Check(controller(&input) == 1 && input.device == 1 && input.clicked == 2, "switch to left hand and deliver the grip press");
+    Check(controller(&input) == 1 && input.device == 1 && input.clicked == 8, "switch to left hand and deliver the grip press separately from right click");
     setButtons(2, 0, 0.5f);
     Check(controller(&input) == 1 && input.device == 1 && input.clicked == 0, "hold the left hand while the right trigger stays above release threshold");
     setButtons(2, 0, 0.2f);
@@ -173,14 +181,14 @@ int main()
     Check(controller(&input) == 1 && input.device == 2, "sample released left grip");
     setButtons(1, grip, 0);
     setButtons(2, stick, 0.7f);
-    Check(controller(&input) == 1 && input.device == 2 && input.clicked == 4, "prefer active hand when both press in the same frame");
+    Check(controller(&input) == 1 && input.device == 2 && input.clicked == 16, "prefer active hand and deliver grip-mode toggle when both press in the same frame");
     suspend();
     Check(controller(&input) == 1 && input.device == 2 && input.clicked == 0, "ignore held buttons after desktop focus returns");
     setControllers(leftHand | rightHand, leftHand, true);
-    Check(controller(&input) == 1 && input.device == 1 && input.buttons == 2 && input.clicked == 0 && Near(input.scroll, 0.7f),
+    Check(controller(&input) == 1 && input.device == 1 && input.buttons == 8 && input.clicked == 0 && Near(input.scroll, 0.7f),
         "switch to left controller and read its touchpad when the right loses tracking");
     setControllers(leftHand, leftHand, false);
-    Check(controller(&input) == 0, "suspend controller input while SteamVR has focus");
+    Check(controller(&input) == 1 && !input.hasInput && input.clicked == 0, "keep tracked pose while SteamVR owns buttons");
     setControllers(leftHand, leftHand, true);
     Check(openPanel() == 1 && controller(&input) == 1 && input.clicked == 0 && !input.pointsAtPanel,
         "open game panel with just the left hand and wait for the first texture");
@@ -191,7 +199,36 @@ int main()
         Near(input.panelX, 0.5f) && Near(input.panelY, 0.5f), "submit panel and project the left-hand ray to its center");
     setControllers(rightHand, rightHand, true);
     Check(controller(&input) == 1 && input.device == 2 && input.pointsAtPanel &&
-        Near(input.panelX, 0.7f) && Near(input.panelY, 0.5f - 0.15f / 1.125f), "project right-hand ray after left-hand disconnect");
+        Near(input.gripPose.m[0][3], 0.4f) && Near(input.aimPose.m[0][3], 0.25f) &&
+        Near(input.panelX, 0.5f + 0.15f / 0.9f) && Near(input.panelY, 0.5f - 0.1f / 0.675f) && Near(input.rayLength, 0.45f),
+        "project the right-hand tip ray after left-hand disconnect");
+    RenderModel_t* model = nullptr;
+    Check(loadModel(input.device, &model) == 0 && !model, "wait for the controller render model");
+    Check(loadModel(input.device, &model) == 1 && model && model->unVertexCount == 3, "load the active controller mesh");
+    freeModel(model);
+    Check(openPanel() == 1, "reopen beside the new active hand");
+    HmdMatrix34_t panelBefore{};
+    panelPose(&panelBefore);
+    Check(Near(panelBefore.m[0][3], 0.4f) && Near(panelBefore.m[1][3], 0.35f) && Near(panelBefore.m[2][3], -1.05f),
+        "spawn panel 55 cm ahead of the active controller");
+    setControllers(leftHand, leftHand, true);
+    Check(controller(&input) == 1 && openPanel() == 1 && dragPanel(1, 1) == 1, "grab panel without snapping");
+    constexpr float diagonal = 0.70710678f;
+    HmdMatrix34_t moved{{{1, 0, 0, 0.4f}, {0, diagonal, -diagonal, 0.5f}, {0, diagonal, diagonal, -0.5f}}};
+    setPose(1, &moved);
+    Check(dragPanel(1, 1) == 1 && controller(&input) == 1 && input.pointsAtPanel &&
+        Near(input.panelX, 0.5f) && Near(input.panelY, 0.5f) && Near(input.rayLength, 0.55f),
+        "move and tilt grabbed panel while preserving its hand-relative pose");
+    Check(dragPanel(1, 0) == 0, "release panel");
+    moved.m[1][3] += 0.1f * diagonal;
+    moved.m[2][3] += 0.1f * diagonal;
+    setPose(1, &moved);
+    Check(controller(&input) == 1 && input.pointsAtPanel && Near(input.panelY, 0.5f - 0.1f / 0.675f),
+        "released tilted panel stays fixed and pointer uses its local vertical axis");
+    Check(dragPanel(1, 1) == 1, "grab again");
+    setControllers(leftHand, 0, true);
+    Check(dragPanel(1, 1) == 0, "tracking loss releases grab");
+    setControllers(leftHand, leftHand, true);
     panelEvent = queuePanel(left.Get());
     Check(panelEvent > 0, "queue panel update before close");
     closePanel();
@@ -207,7 +244,9 @@ int main()
     stop();
 
     SetEnvironmentVariableA("AL_VR_TEST_MODE", "failPanel");
-    Check(start(mockPath.c_str(), &display) == 1 && openPanel() == 1, "start for panel texture rejection");
+    Check(start(mockPath.c_str(), &display) == 1 && openPanel() == 0, "wait for a controller before opening panel");
+    setControllers(leftHand, leftHand, true);
+    Check(controller(&input) == 1 && openPanel() == 1, "start for panel texture rejection");
     panelEvent = queuePanel(left.Get());
     Check(panelEvent > 0, "queue panel texture for rejection");
     render(panelEvent);

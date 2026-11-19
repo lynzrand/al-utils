@@ -5,6 +5,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import struct
@@ -12,7 +13,7 @@ import struct
 import lz4.block
 from UnityPy import load
 
-GAME = Path(r'H:\Programs\gal\amanatsu-location')
+GAME = Path(os.environ.get('AL_GAME_PATH', r'H:\Programs\gal\amanatsu-location'))
 MAP = GAME / 'lib/ma/pre/sc/000_08/02.unity3d'
 DXBC = re.compile(b'DXBC')
 ROW = struct.Struct('<III')

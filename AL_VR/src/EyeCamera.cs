@@ -56,6 +56,7 @@ internal sealed class EyeCamera : IDisposable
         urp.SetRenderer(sourceUrp ? sourceUrp!.m_RendererIndex : -1);
         urp.renderShadows = !sourceUrp || sourceUrp!.renderShadows;
         urp.renderPostProcessing = sourceUrp && sourceUrp!.renderPostProcessing;
+        urp.volumeFrameworkUpdateMode = VolumeFrameworkUpdateMode.ViaScripting;
         urp.requiresColorOption = sourceUrp ? sourceUrp!.requiresColorOption : CameraOverrideOption.UsePipelineSettings;
         urp.requiresDepthOption = sourceUrp ? sourceUrp!.requiresDepthOption : CameraOverrideOption.UsePipelineSettings;
         urp.volumeLayerMask = sourceUrp ? sourceUrp!.volumeLayerMask : (LayerMask)1;
@@ -75,6 +76,27 @@ internal sealed class EyeCamera : IDisposable
         Camera.projectionMatrix = eye.Projection(Camera.nearClipPlane, Camera.farClipPlane);
         Camera.nonJitteredProjectionMatrix = Camera.projectionMatrix;
         Camera.enabled = true;
+    }
+
+    internal void SetNearClip(float near)
+    {
+        Camera.nearClipPlane = near;
+        Camera.projectionMatrix = eye.Projection(near, Camera.farClipPlane);
+        Camera.nonJitteredProjectionMatrix = Camera.projectionMatrix;
+    }
+
+    internal void PreparePostProcessing()
+    {
+        // Update our own stack before URP selects it. Shared desktop profiles
+        // stay untouched, and URP cannot overwrite these exclusions afterwards.
+        CameraExtensions.UpdateVolumeStack(Camera, urp);
+        var stack = urp.volumeStack;
+        if (stack == null) return;
+        stack.GetComponent<LensDistortion>().active = false;
+        stack.GetComponent<PaniniProjection>().active = false;
+        stack.GetComponent<MotionBlur>().active = false;
+        stack.GetComponent<DepthOfField>().active = false;
+        stack.GetComponent<ChromaticAberration>().active = false;
     }
 
     public void Dispose()

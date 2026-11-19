@@ -16,7 +16,10 @@ namespace
     uint64_t controllerButtons[2];
     float controllerTriggers[2];
     bool inputAvailable, panelVisible;
+    bool panelAlpha, panelPremultiplied, panelBounds;
     uint32_t panelFrames;
+    int modelLoads;
+    HmdMatrix34_t controllerPoses[2], lastPanelTransform;
 
     bool HasMode(const char* name)
     {
@@ -62,10 +65,15 @@ namespace
             poses[0].mDeviceToAbsoluteTracking = Transform(0.1f, 0.2f, -0.3f);
             poses[0].bDeviceIsConnected = poses[0].bPoseIsValid = true;
         }
+        for (uint32_t device = 1; device < count && device <= 3; ++device)
+        {
+            poses[device].bDeviceIsConnected = (connectedControllers & (1u << device)) != 0;
+            poses[device].bPoseIsValid = (trackedControllers & (1u << device)) != 0;
+            poses[device].mDeviceToAbsoluteTracking = controllerPoses[device == 1 ? 0 : 1];
+        }
     }
 
     bool __stdcall IsInputAvailable() { return inputAvailable; }
-    bool __stdcall IsConnected(TrackedDeviceIndex_t device) { return device < 32 && (connectedControllers & (1u << device)); }
     ETrackedDeviceClass __stdcall DeviceClass(TrackedDeviceIndex_t device)
     {
         return device == 3 ? ETrackedDeviceClass_TrackedDeviceClass_GenericTracker :
@@ -76,42 +84,94 @@ namespace
     {
         if (property == ETrackedDeviceProperty_Prop_Axis0Type_Int32) return EVRControllerAxisType_k_eControllerAxis_TrackPad;
         if (property == ETrackedDeviceProperty_Prop_Axis1Type_Int32) return EVRControllerAxisType_k_eControllerAxis_Trigger;
+        if (property == ETrackedDeviceProperty_Prop_Axis2Type_Int32) return EVRControllerAxisType_k_eControllerAxis_Trigger;
         if (device == 2 && property == ETrackedDeviceProperty_Prop_Axis3Type_Int32) return EVRControllerAxisType_k_eControllerAxis_Joystick;
         return EVRControllerAxisType_k_eControllerAxis_None;
     }
 
-    bool __stdcall ControllerState(ETrackingUniverseOrigin origin, TrackedDeviceIndex_t device, VRControllerState_t* state,
-        uint32_t size, TrackedDevicePose_t* pose)
+    bool __stdcall ControllerState(TrackedDeviceIndex_t device, VRControllerState_t* state, uint32_t size)
     {
-        if (origin != ETrackingUniverseOrigin_TrackingUniverseSeated || size != sizeof(*state))
+        if (size != sizeof(*state))
             return false;
         state->ulButtonPressed = controllerButtons[device - 1];
         state->ulButtonTouched = uint64_t{1} << EVRButtonId_k_EButton_Axis0;
         state->rAxis[0].y = 0.7f;
         state->rAxis[1].x = controllerTriggers[device - 1];
+        state->rAxis[2].x = 0.2f;
         state->rAxis[3].y = -0.5f;
-        pose->bDeviceIsConnected = true;
-        pose->bPoseIsValid = (trackedControllers & (1u << device)) != 0;
-        pose->mDeviceToAbsoluteTracking = Transform(device == 1 ? 0.1f : 0.4f, device == 1 ? 0.2f : 0.35f, -0.5f);
         return true;
     }
+
+    uint32_t __stdcall StringProperty(TrackedDeviceIndex_t device, ETrackedDeviceProperty property, char* value,
+        uint32_t size, ETrackedPropertyError* error)
+    {
+        const char* name = device == 1 ? "mock-left" : "mock-right";
+        if (property != ETrackedDeviceProperty_Prop_RenderModelName_String || strcpy_s(value, size, name) != 0)
+        {
+            *error = ETrackedPropertyError_TrackedProp_UnknownProperty;
+            return 0;
+        }
+        *error = ETrackedPropertyError_TrackedProp_Success;
+        return static_cast<uint32_t>(std::strlen(name) + 1);
+    }
+
+    bool __stdcall ComponentState(char* name, char* component, VRControllerState_t*, RenderModel_ControllerMode_State_t*,
+        RenderModel_ComponentState_t* state)
+    {
+        if (std::strcmp(component, "tip") != 0 || std::strcmp(name, "mock-right") != 0)
+            return false;
+        state->mTrackingToComponentLocal = Transform(-0.15f, -0.05f, -0.1f);
+        return true;
+    }
+
+    EVRRenderModelError __stdcall LoadModel(char*, RenderModel_t** model)
+    {
+        if (++modelLoads == 1)
+            return EVRRenderModelError_VRRenderModelError_Loading;
+        static RenderModel_Vertex_t vertices[] = {{{{0, 0, 0}}, {}, {}}, {{{0.04f, 0, 0}}, {}, {}}, {{{0, 0.04f, 0}}, {}, {}}};
+        static uint16_t indices[] = {0, 1, 2};
+        static RenderModel_t controller{vertices, 3, indices, 1, -1};
+        *model = &controller;
+        return EVRRenderModelError_VRRenderModelError_None;
+    }
+
+    void __stdcall FreeModel(RenderModel_t*) {}
 
     constexpr auto overlayOk = EVROverlayError_VROverlayError_None;
 
     EVROverlayError __stdcall CreateOverlay(char*, char*, VROverlayHandle_t* handle)
     {
+        panelAlpha = panelPremultiplied = panelBounds = false;
         *handle = 1;
         return overlayOk;
     }
     EVROverlayError __stdcall DestroyOverlay(VROverlayHandle_t) { panelVisible = false; return overlayOk; }
     EVROverlayError __stdcall SetWidth(VROverlayHandle_t, float) { return overlayOk; }
-    EVROverlayError __stdcall SetFlag(VROverlayHandle_t, VROverlayFlags, bool) { return overlayOk; }
-    EVROverlayError __stdcall SetTransform(VROverlayHandle_t, ETrackingUniverseOrigin, HmdMatrix34_t*) { return overlayOk; }
+    EVROverlayError __stdcall SetFlag(VROverlayHandle_t, VROverlayFlags flag, bool enabled)
+    {
+        if (flag == VROverlayFlags_IgnoreTextureAlpha) panelAlpha = !enabled;
+        if (flag == VROverlayFlags_IsPremultiplied) panelPremultiplied = enabled;
+        if ((flag == VROverlayFlags_IgnoreTextureAlpha && enabled) ||
+            (flag == VROverlayFlags_IsPremultiplied && !enabled))
+            return EVROverlayError_VROverlayError_InvalidParameter;
+        return overlayOk;
+    }
+    EVROverlayError __stdcall SetBounds(VROverlayHandle_t, VRTextureBounds_t* bounds)
+    {
+        panelBounds = bounds && bounds->uMin == 0 && bounds->uMax == 1 && bounds->vMin == 1 && bounds->vMax == 0;
+        return panelBounds ? overlayOk : EVROverlayError_VROverlayError_InvalidParameter;
+    }
+    EVROverlayError __stdcall SetTransform(VROverlayHandle_t, ETrackingUniverseOrigin, HmdMatrix34_t* pose)
+    {
+        lastPanelTransform = *pose;
+        return overlayOk;
+    }
     bool __stdcall IsOverlayVisible(VROverlayHandle_t) { return panelVisible; }
     EVROverlayError __stdcall ShowOverlay(VROverlayHandle_t) { panelVisible = true; return overlayOk; }
     EVROverlayError __stdcall SetOverlayTexture(VROverlayHandle_t, Texture_t* texture)
     {
-        if (!texture || !texture->handle || texture->eType != ETextureType_TextureType_DirectX || HasMode("failPanel"))
+        if (!texture || !texture->handle || texture->eType != ETextureType_TextureType_DirectX || HasMode("failPanel") ||
+            !panelAlpha || !panelPremultiplied || !panelBounds)
             return EVROverlayError_VROverlayError_InvalidTexture;
         ++panelFrames;
         return overlayOk;
@@ -134,7 +194,8 @@ namespace
         EVRSubmitFlags flags)
     {
         if (!initialized || !texture || !texture->handle || texture->eType != ETextureType_TextureType_DirectX ||
-            !bounds || flags != EVRSubmitFlags_Submit_Default)
+            !bounds || bounds->uMin != 0 || bounds->uMax != 1 || bounds->vMin != 1 || bounds->vMax != 0 ||
+            flags != EVRSubmitFlags_Submit_Default)
             return EVRCompositorError_VRCompositorError_InvalidTexture;
 
         const uint32_t mask = 1u << eye;
@@ -164,10 +225,10 @@ namespace
         table.PollNextEvent = NextEvent;
         table.GetDeviceToAbsoluteTrackingPose = AbsolutePose;
         table.IsInputAvailable = IsInputAvailable;
-        table.IsTrackedDeviceConnected = IsConnected;
         table.GetTrackedDeviceClass = DeviceClass;
         table.GetInt32TrackedDeviceProperty = AxisType;
-        table.GetControllerStateWithPose = ControllerState;
+        table.GetStringTrackedDeviceProperty = StringProperty;
+        table.GetControllerState = ControllerState;
         return table;
     }
 
@@ -191,6 +252,7 @@ namespace
         table.DestroyOverlay = DestroyOverlay;
         table.SetOverlayWidthInMeters = SetWidth;
         table.SetOverlayFlag = SetFlag;
+        table.SetOverlayTextureBounds = SetBounds;
         table.SetOverlayTransformAbsolute = SetTransform;
         table.IsOverlayVisible = IsOverlayVisible;
         table.ShowOverlay = ShowOverlay;
@@ -199,6 +261,17 @@ namespace
     }
 
     auto overlayTable = MakeOverlay();
+
+    VR_IVRRenderModels_FnTable MakeRenderModels()
+    {
+        VR_IVRRenderModels_FnTable table{};
+        table.GetComponentState = ComponentState;
+        table.LoadRenderModel_Async = LoadModel;
+        table.FreeRenderModel = FreeModel;
+        return table;
+    }
+
+    auto renderModelTable = MakeRenderModels();
 }
 
 #define MOCK_EXPORT extern "C" __declspec(dllexport)
@@ -214,6 +287,11 @@ MOCK_EXPORT intptr_t VR_InitInternal(EVRInitError* error, EVRApplicationType typ
     initialized = type == EVRApplicationType_VRApplication_Scene;
     acceptedEyes = 0;
     connectedControllers = trackedControllers = panelFrames = 0;
+    modelLoads = 0;
+    controllerPoses[0] = Transform(0.1f, 0.2f, -0.5f);
+    controllerPoses[1] = Transform(0.4f, 0.35f, -0.5f);
+    if (HasMode("trackedController"))
+        connectedControllers = trackedControllers = 1u << 2;
     controllerButtons[0] = controllerButtons[1] = 0;
     controllerTriggers[0] = controllerTriggers[1] = 0;
     panelVisible = false;
@@ -232,9 +310,11 @@ MOCK_EXPORT intptr_t VR_GetGenericInterface(const char* name, EVRInitError* erro
     char systemName[64];
     char compositorName[64];
     char overlayName[64];
+    char renderModelName[64];
     std::snprintf(systemName, sizeof(systemName), "FnTable:%s", IVRSystem_Version);
     std::snprintf(compositorName, sizeof(compositorName), "FnTable:%s", IVRCompositor_Version);
     std::snprintf(overlayName, sizeof(overlayName), "FnTable:%s", IVROverlay_Version);
+    std::snprintf(renderModelName, sizeof(renderModelName), "FnTable:%s", IVRRenderModels_Version);
 
     *error = EVRInitError_VRInitError_None;
     if (initialized && std::strcmp(name, systemName) == 0)
@@ -243,6 +323,8 @@ MOCK_EXPORT intptr_t VR_GetGenericInterface(const char* name, EVRInitError* erro
         return reinterpret_cast<intptr_t>(&compositorTable);
     if (initialized && !HasMode("noOverlay") && std::strcmp(name, overlayName) == 0)
         return reinterpret_cast<intptr_t>(&overlayTable);
+    if (initialized && std::strcmp(name, renderModelName) == 0)
+        return reinterpret_cast<intptr_t>(&renderModelTable);
     *error = EVRInitError_VRInitError_Init_InterfaceNotFound;
     return 0;
 }
@@ -260,6 +342,9 @@ MOCK_EXPORT void MockControllers(uint32_t connected, uint32_t tracked, bool avai
 }
 
 MOCK_EXPORT uint32_t MockPanelFrames() { return panelFrames; }
+
+MOCK_EXPORT void MockControllerPose(uint32_t device, HmdMatrix34_t* pose) { controllerPoses[device - 1] = *pose; }
+MOCK_EXPORT void MockPanelPose(HmdMatrix34_t* pose) { *pose = lastPanelTransform; }
 
 MOCK_EXPORT void MockControllerButtons(uint32_t device, uint64_t buttons, float trigger)
 {

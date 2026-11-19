@@ -29,8 +29,13 @@ internal readonly struct OpenVrEye
     internal readonly OpenVrTransform EyeToHead;
     private readonly float left, right, top, bottom;
 
+    // OpenVR's raw "top" is the lower Y tangent and "bottom" the upper.
+    // Both APIs use a right-handed view space here. Negating/swapping these
+    // tangents mirrors the optical-centre offset, even if texture submission
+    // makes the image upright. Keep texture orientation separate from optics.
+    // Reference: Valve's IVRSystem::GetProjectionRaw ComposeProjection formula.
     internal Matrix4x4 Projection(float near, float far) =>
-        Matrix4x4.Frustum(left * near, right * near, -bottom * near, -top * near, near, far);
+        Matrix4x4.Frustum(left * near, right * near, top * near, bottom * near, near, far);
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -47,6 +52,9 @@ internal readonly struct OpenVrController
     private readonly uint buttons, clicked;
     internal readonly float Scroll, PanelX, PanelY;
     private readonly uint pointsAtPanel;
+    private readonly uint hasInput;
+    internal readonly OpenVrTransform GripPose, AimPose;
+    internal readonly float RayLength;
 
     internal bool TriggerPressed => (buttons & 1) != 0;
     internal bool SecondaryPressed => (buttons & 2) != 0;
@@ -54,7 +62,20 @@ internal readonly struct OpenVrController
     internal bool TriggerClicked => (clicked & 1) != 0;
     internal bool SecondaryClicked => (clicked & 2) != 0;
     internal bool MenuClicked => (clicked & 4) != 0;
+    internal bool GripPressed => (buttons & 8) != 0;
+    internal bool GripClicked => (clicked & 8) != 0;
+    internal bool ModeClicked => (clicked & 16) != 0;
     internal bool PointsAtPanel => pointsAtPanel != 0;
+    internal bool HasInput => hasInput != 0;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal readonly struct OpenVrRenderModel
+{
+    internal readonly IntPtr Vertices;
+    internal readonly uint VertexCount;
+    internal readonly IntPtr Indices;
+    internal readonly uint TriangleCount;
 }
 
 internal static class OpenVr
@@ -134,10 +155,19 @@ internal static class OpenVr
     internal static extern int AlVrReadController(out OpenVrController controller);
 
     [DllImport(Bridge, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int AlVrLoadControllerModel(uint device, out IntPtr model);
+
+    [DllImport(Bridge, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void AlVrFreeControllerModel(IntPtr model);
+
+    [DllImport(Bridge, CallingConvention = CallingConvention.Cdecl)]
     internal static extern void AlVrSuspendControllerInput();
 
     [DllImport(Bridge, CallingConvention = CallingConvention.Cdecl)]
     internal static extern int AlVrOpenPanel();
+
+    [DllImport(Bridge, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int AlVrDragPanel(uint device, int held);
 
     [DllImport(Bridge, CallingConvention = CallingConvention.Cdecl)]
     internal static extern int AlVrQueuePanel(IntPtr texture);
