@@ -11,11 +11,14 @@ namespace AL_NPR;
 public sealed class Plugin : BasePlugin
 {
     internal static BepInEx.Configuration.ConfigEntry<bool>? HigherMapShadowResolution { get; private set; }
+    internal static BepInEx.Configuration.ConfigEntry<bool>? HigherShadowDepthPrecision { get; private set; }
 
     public override void Load()
     {
         HigherMapShadowResolution = Config.Bind("Shadows", "HigherMapShadowResolution", true,
             "Double the requested side length of authored map point/spot shadow slices and their atlas, up to 8192.");
+        HigherShadowDepthPrecision = Config.Bind("Shadows", "HigherShadowDepthPrecision", false,
+            "Request 32-bit depth for the additional-light shadow atlas while the map-light shader is active.");
         var path = Path.Combine(Path.GetDirectoryName(GetType().Assembly.Location)!, "al-skin-lighting.unity3d");
         if (File.Exists(path))
         {

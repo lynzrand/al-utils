@@ -43,10 +43,9 @@ def build(source,output):
     build_material_bundle(source, output, lambda code, shader: patch(code))
 
 
-def build_material_bundle(source, output, transform):
+def build_material_bundle(source, output, transform, targets=(76,146,131,136)):
     if source.resolve()==output.resolve():raise ValueError("Keep the original comparison bundle")
     bundle=load(source.read_bytes()).file;asset,=bundle.files.values()
-    targets=(76,146,131,136)
     for id in targets:
         obj=asset.objects[id];tree=obj.read_typetree();data,rows=index(tree);changes={}
         for slot,refs in blob_references(tree['m_ParsedForm']).items():
@@ -59,7 +58,10 @@ def build_material_bundle(source, output, transform):
             changes[slot]=head+dx+bytes((-(len(head)+len(dx)))%4)+w[(c.end+3)&~3:]
         if len(changes)!=(64 if id in (76,146) else 320):raise ValueError("Incomplete variant coverage")
         repack(tree,data,rows,changes);obj.save_typetree(tree)
-    cab='CAB-'+hashlib.sha256(b''.join(asset.objects[i].data for i in targets)).hexdigest()[:32]
+    identity = b''.join(asset.objects[i].data for i in targets)
+    if targets != (76,146,131,136):
+        identity += hashlib.sha256(source.read_bytes()).digest()
+    cab='CAB-'+hashlib.sha256(identity).hexdigest()[:32]
     bundle.files={cab:asset};payload=bundle.save(packer='lz4');check=load(payload).file.files[cab]
     if any(check.objects[i].get_raw_data()!=asset.objects[i].data for i in targets):raise ValueError("Repack mismatch")
     output.write_bytes(payload)

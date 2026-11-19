@@ -56,6 +56,8 @@ internal sealed class MapDirectional : IDisposable
             {
                 var create = AccessTools.Method(typeof(UniversalRenderPipeline), nameof(UniversalRenderPipeline.CreateShadowData));
                 hook.Patch(create, postfix: new HarmonyMethod(typeof(MapDirectional), nameof(ScaleMapShadowRequests)));
+                var allocate = AccessTools.Method(typeof(ShadowUtils), nameof(ShadowUtils.ShadowRTReAllocateIfNeeded));
+                hook.Patch(allocate, prefix: new HarmonyMethod(typeof(MapDirectional), nameof(SelectAtlasDepth)));
             }
         }
         catch
@@ -65,6 +67,13 @@ internal sealed class MapDirectional : IDisposable
             buffer.Release();
             throw;
         }
+    }
+
+    private static void SelectAtlasDepth(ref int bits, string name)
+    {
+        if (instance is { Active: true } && Plugin.HigherShadowDepthPrecision?.Value == true &&
+            name == "_AdditionalLightsShadowmapTexture")
+            bits = Math.Max(bits, 32);
     }
 
     // URP builds fresh requests for every camera. Adjust them before packing so

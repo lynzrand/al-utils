@@ -121,7 +121,7 @@ def patches_for(snapshot, data, rows, fuse_skin, full_fusion, shader_map_lights,
     return replacements
 
 
-def attach_map_parameters(snapshot, data, rows, replacements, *, directionals=False, ray_visibility=False):
+def attach_map_parameters(snapshot, data, rows, replacements, *, directionals=False, ray_visibility=False, expected_tables=32):
     selected, other = set(), set()
     passes = []
     for sub in snapshot["m_ParsedForm"]["m_SubShaders"]:
@@ -137,8 +137,8 @@ def attach_map_parameters(snapshot, data, rows, replacements, *, directionals=Fa
                                 passes.append((sub, index))
                         else:
                             other.add(slot)
-    if len(selected) != 32 or selected & other or len(passes) != 1:
-        raise ValueError("Expected 32 parameter blobs exclusive to the audited skin Forward+ pass")
+    if len(selected) != expected_tables or selected & other or len(passes) != 1:
+        raise ValueError(f"Expected {expected_tables} exclusive Forward+ parameter tables, found {len(selected)}")
     if selected & replacements.keys():
         raise ValueError("Shader program and parameter blob indices overlap")
     sub, index = passes[0]
