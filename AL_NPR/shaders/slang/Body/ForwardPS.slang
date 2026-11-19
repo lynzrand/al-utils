@@ -1,4 +1,7 @@
 import ForwardPlus;
+#ifdef FILTER_BODY_OIL
+import FluidMask;
+#endif
 import PackedBits;
 import SceneLighting;
 import Coverage;
@@ -118,6 +121,15 @@ Texture2D<float4> _MainLightShadowmapTexture : register(t13);
 Texture2D<float4> _AdditionalLightsShadowmapTexture : register(t14);
 Texture2DArray<float4> _TexEX : register(t15);
 Texture2DArray<float4> _Detail_mask_01 : register(t16);
+
+float4 readBodyFluid(float2 uv)
+{
+#ifdef FILTER_BODY_OIL
+    return sampleFluidMask(_FluidTex, sampler_FluidTex, uv);
+#else
+    return _FluidTex.Sample(sampler_FluidTex, uv);
+#endif
+}
 
 struct StageInput
 {
@@ -596,13 +608,13 @@ StageOutput main(StageInput stage_input)
     r19.zw = r20.xy + (-0.5f).xx;
     r19.zw = r19.zw * UnityPerMaterialData[24u].ww;
     r19.xy = mad(r19.zw, UnityPerMaterialData[11u].xy, r19.xy);
-    r20 = _FluidTex.Sample(sampler_FluidTex, r19.xy);
+    r20 = readBodyFluid(r19.xy);
     r21 = float4(UnityPerMaterialData[11u].x, r21.y, r21.z, UnityPerMaterialData[11u].y);
     r21 = float4(r21.x, 0.0f.x, 0.0f.x, r21.w);
     r19 = r19.xyxy + r21;
-    r3.w = _FluidTex.Sample(sampler_FluidTex, r19.xy).w;
+    r3.w = readBodyFluid(r19.xy).w;
     r19.x = (-r3.wwww).x + r20.w;
-    r3.w = _FluidTex.Sample(sampler_FluidTex, r19.zw).w;
+    r3.w = readBodyFluid(r19.zw).w;
     r19.y = (-r3.wwww).y + r20.w;
     r19.xy = r19.xy * UnityPerMaterialData[25u].xx;
     r19.z = 1.0f;
@@ -1795,13 +1807,13 @@ StageOutput main(StageInput stage_input)
     r19.zw = r20.xy + (-0.5f).xx;
     r19.zw = r19.zw * UnityPerMaterialData[24u].ww;
     r19.xy = mad(r19.zw, UnityPerMaterialData[11u].xy, r19.xy);
-    r20 = _FluidTex.Sample(sampler_FluidTex, r19.xy);
+    r20 = readBodyFluid(r19.xy);
     r21 = float4(UnityPerMaterialData[11u].x, r21.y, r21.z, UnityPerMaterialData[11u].y);
     r21 = float4(r21.x, 0.0f.x, 0.0f.x, r21.w);
     r19 = r19.xyxy + r21;
-    r3.w = _FluidTex.Sample(sampler_FluidTex, r19.xy).w;
+    r3.w = readBodyFluid(r19.xy).w;
     r19.x = (-r3.wwww).x + r20.w;
-    r3.w = _FluidTex.Sample(sampler_FluidTex, r19.zw).w;
+    r3.w = readBodyFluid(r19.zw).w;
     r19.y = (-r3.wwww).y + r20.w;
     r19.xy = r19.xy * UnityPerMaterialData[25u].xx;
     r19.z = 1.0f;

@@ -19,6 +19,7 @@ def main():
     parser.add_argument("--fxc", default="fxc", help="Windows SDK FXC executable for DXBC output")
     parser.add_argument("--target", choices=["dxbc", "dxil"], default="dxbc")
     parser.add_argument("--program", action="append", help="Build just this manifest entry (repeatable)")
+    parser.add_argument("--filter-body-oil", action="store_true", help="Use cubic reconstruction for the painted body mask")
     args = parser.parse_args()
     programs = json.loads((SOURCE / "programs.json").read_text())
     selected = args.program or list(programs)
@@ -35,9 +36,10 @@ def main():
             path.parent.mkdir(parents=True, exist_ok=True)
             dxbc = args.target == "dxbc"
             intermediate = path.with_suffix(".hlsl") if dxbc else path
+            defines = ["-DFILTER_BODY_OIL=1"] if args.filter_body_oil and source == "Body/ForwardPS.slang" else []
             subprocess.run([args.slangc, str(SOURCE / source), "-I", str(SOURCE),
                             "-stage", stage, "-entry", "main", "-profile", profile,
-                            "-fp-mode", "precise", "-target", "hlsl" if dxbc else "dxil",
+                            *defines, "-fp-mode", "precise", "-target", "hlsl" if dxbc else "dxil",
                             "-o", str(intermediate)], check=True)
             if dxbc:
                 # FXC's optimizer folds loops carrying Unity's integer masks in float lanes.

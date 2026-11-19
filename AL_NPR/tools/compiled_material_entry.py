@@ -31,6 +31,7 @@ def bind_entry(program, inputs, output, scratch, resources=None):
             while t[i-1] & 0x80000000:
                 args.append(t[i])
                 i += 1
+        destination = i
         while i < len(t):
             token = t[i]
             if token in (0x4001, 0x4002):
@@ -49,7 +50,7 @@ def bind_entry(program, inputs, output, scratch, resources=None):
                 args.extend([token, resources[kind, idx] if resources is not None else idx])
                 i += 2
                 continue
-            elif kind == 2 and idx == 0 and i == 1 and token in (0x102012, 0x102072):
+            elif kind == 2 and idx == 0 and i == destination and token in (0x102012, 0x102072, 0x1020f2):
                 reg = output
             else:
                 raise ValueError(f"Unexpected compiled entry operand {token:#x}")
