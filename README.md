@@ -6,7 +6,7 @@ Download the Windows x64 archives you want from [Releases](https://github.com/ly
 
 ## AL H Utils
 
-Nobody have made a POV plugin yet, so guess I'll have to do it. This plugin also provides shortcut
+Nobody has made a POV plugin yet, so guess I'll have to do it. This plugin also provides shortcut
 keys for POV and intense mode in H. Inspired by FairBear and 2155X’s
 [PoVX](https://github.com/FairBear/AI_PovX).
 
@@ -14,7 +14,7 @@ Press **Comma** to enter or leave POV, **Period** to switch characters and **Hom
 
 ## AL Scene Lighting
 
-Ever wondering why we need a primary "key" light for character shading? Turns out it's not that
+Ever wondered why we need a primary "key" light for character shading? Turns out it's not that
 necessary! Characters will use the scene lightings with this plugin installed. Might look weird.
 Definitely needs more polishing.
 
@@ -27,7 +27,8 @@ p.s. we also have the full shader translated into very modular Slang, courtesy o
 
 ## AL SteamVR
 
-Yes, main game VR! Does exactly what it says.
+Yes, main game VR! Does exactly what it says. Not much testing have been made yet, use with caution.
+The only thing I know is that it works.
 
 Start SteamVR with the headset connected, then run **Launch AL VR.bat** from the game folder. **F9** toggles VR, **F10** recenters, and the controller’s application-menu button toggles the panel. [Controller guide](AL_VR/README.md)
 
@@ -46,8 +47,8 @@ Install Runtime Unity Editor for its C# compiler. Launch the game with `--al-rep
 
 ## AL RenderDoc Preloader
 
-This optional BepInEx patcher loads RenderDoc early enough to capture the game’s graphics device. It
-works with AL Performance’s frame-capture command.
+For capturing frames from the game for analysis. This optional BepInEx patcher loads RenderDoc early
+enough to capture the game’s graphics device. It works with AL Performance’s frame-capture command.
 
 Install x64 RenderDoc, set `AL_PERF_RENDERDOC=1` and `AL_PERF_RENDERDOC_DLL` to the absolute path of its `renderdoc.dll`, then launch the game. [Capture instructions](AL_Performance/RenderDocPreloader/README.md)
 
