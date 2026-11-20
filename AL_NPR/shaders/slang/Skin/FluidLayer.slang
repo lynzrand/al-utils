@@ -7,9 +7,28 @@ public struct FluidLayer
     public float3 normalTS;
 }
 
-public enum FluidFilter { Linear, Cubic }
+public interface IFluidFilter
+{
+    static float4 samplePaint(Texture2D<float4> paint, SamplerState paintSampler, float2 uv);
+}
 
-public struct FluidMap<let filter : FluidFilter>
+public struct LinearFluidFilter : IFluidFilter
+{
+    public static float4 samplePaint(Texture2D<float4> paint, SamplerState paintSampler, float2 uv)
+    {
+        return paint.Sample(paintSampler, uv);
+    }
+}
+
+public struct CubicFluidFilter : IFluidFilter
+{
+    public static float4 samplePaint(Texture2D<float4> paint, SamplerState paintSampler, float2 uv)
+    {
+        return sampleFluidMask(paint, paintSampler, uv);
+    }
+}
+
+public struct FluidMap<Filter : IFluidFilter>
 {
     public Texture2D<float4> paintMap;
     public SamplerState paintSampler;
@@ -21,9 +40,7 @@ public struct FluidMap<let filter : FluidFilter>
 
     float4 readPaint(float2 uv)
     {
-        if (filter == FluidFilter.Cubic)
-            return sampleFluidMask(paintMap, paintSampler, uv);
-        return paintMap.Sample(paintSampler, uv);
+        return Filter.samplePaint(paintMap, paintSampler, uv);
     }
 
     public FluidLayer sampleLayer(float2 materialUV)

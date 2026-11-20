@@ -44,7 +44,7 @@ public FaceSurface sampleFaceSurface(StageInput input)
     s.view = faceViewDirection(input.positionWS.xyz);
     s.makeup = sampleFaceMakeup(input);
     s.detail = sampleFaceDetail(uv);
-    FluidLayer fluid = skinFluidMap<FluidFilter.Linear>().sampleLayer(uv);
+    FluidLayer fluid = skinFluidMap<LinearFluidFilter>().sampleLayer(uv);
     float3 combined = combineNormalSlopes(s.detail.liquidNormalTS, fluid.normalTS);
     s.bumpWorld = s.basis.toWorld(normalize(combined));
     s.normal = normalize(s.bumpWorld);

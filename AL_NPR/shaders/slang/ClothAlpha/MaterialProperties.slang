@@ -1,6 +1,6 @@
 import Cloth.FabricOpacity;
 
-public typealias Fabric = FabricOpacity<FabricKind.Cutout>;
+public typealias Fabric = CutoutFabric;
 
 #if defined(CLOTH_DEPTH_PASS)
 public cbuffer UnityPerMaterial : register(b2)

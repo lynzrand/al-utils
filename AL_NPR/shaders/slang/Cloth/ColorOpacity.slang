@@ -7,8 +7,7 @@ public float colorOpacity(float2 positionCS, float4 uv, ClothPigment pigment, fl
 {
     float detail = pigment.detail.b;
     float fade = max(mad(distance(_WorldSpaceCameraPos.xyz, objectOrigin.xyz), -0.09090909, 1), 0);
-    Fabric fabric = { pigment.base.rgb, pigment.sheer };
-    float opacity = garmentOpacity(fabric, pigment.base.a, uv.xy, detail, fade, wetness);
+    float opacity = garmentOpacity<Fabric>(pigment.base, uv.xy, detail, fade, wetness, pigment.sheer);
     float threshold = ditherThreshold(positionCS, _ScaledScreenParams.xy, _ScaleBiasRt.xy, _ProjectionParams.x);
 #ifdef CLOTH_PREPASS
     opacity = maskedClothOpacity(opacity, uv, threshold, false);

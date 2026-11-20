@@ -10,9 +10,9 @@ import Body.Material;
 import Skin.FluidLayer;
 import Skin.FluidPigment;
 
-public FluidMap<filter> skinFluidMap<let filter : FluidFilter>()
+public FluidMap<Filter> skinFluidMap<Filter : IFluidFilter>()
 {
-    FluidMap<filter> map;
+    FluidMap<Filter> map;
     map.paintMap = _FluidTex;
     map.paintSampler = sampler_FluidTex;
     map.scaleOffset = _FluidTex_ST;

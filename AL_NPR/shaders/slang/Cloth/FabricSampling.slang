@@ -1,4 +1,5 @@
 import Cloth.Bindings;
+import Cloth.FabricOpacity;
 import Cloth.RegionMasks;
 import Coverage;
 
@@ -60,11 +61,12 @@ public float maskedClothOpacity(float opacity, float4 uv, float threshold, bool 
     return opacity * clothingMask(top, bottom, _alpha_a, _alpha_b);
 }
 
-public float garmentOpacity(Fabric fabric, float baseAlpha, float2 uv, float detail, float distanceFade, float wetness)
+public float garmentOpacity<TFabric : IFabricOpacity>(float4 base, float2 uv, float detail,
+                                                   float distanceFade, float wetness, float sheer)
 {
-    float outline = clothOutlineOpacity(baseAlpha, uv, detail, distanceFade);
-    float opacity = fabric.dryOpacity(outline, _sukeONOFF);
-    return max(opacity, smoothstep(0.3, 1, baseAlpha) * smoothstep(0.01, 0.7, wetness));
+    float outline = clothOutlineOpacity(base.a, uv, detail, distanceFade);
+    float opacity = TFabric.dryOpacity(outline, base.rgb, sheer, _sukeONOFF);
+    return max(opacity, smoothstep(0.3, 1, base.a) * smoothstep(0.01, 0.7, wetness));
 }
 
 public float clothCutoff(float detail)

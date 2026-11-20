@@ -14,9 +14,9 @@ import Reflectance;
 #define FILTER_BODY_OIL 0
 #endif
 #if FILTER_BODY_OIL && SKIN_NPR && !SKIN_PREPASS
-static const FluidFilter bodyFluidFilter = FluidFilter.Cubic;
+typealias BodyFluidFilter = CubicFluidFilter;
 #else
-static const FluidFilter bodyFluidFilter = FluidFilter.Linear;
+typealias BodyFluidFilter = LinearFluidFilter;
 #endif
 
 public struct BodySurface
@@ -173,7 +173,7 @@ public BodySurface sampleBody(StageInput input, float visibility)
     s.view = unity_OrthoParams.w == 0 ? normalize(s.cameraOffset)
            : float3(unity_MatrixV0.z, unity_MatrixV1.z, unity_MatrixV2.z);
     float4 detailColor = sampleBodyMasks(s, input, input.uv0Uv1.xy);
-    FluidLayer fluid = skinFluidMap<bodyFluidFilter>().sampleLayer(input.uv0Uv1.xy);
+    FluidLayer fluid = skinFluidMap<BodyFluidFilter>().sampleLayer(input.uv0Uv1.xy);
     float4 nipple;
     WetBody wet = sampleBodyNormals(s, input, fluid.normalTS, nipple);
     sampleBodyPigment(s, input, detailColor, nipple, fluid, wet, visibility);

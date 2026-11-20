@@ -23,15 +23,15 @@ public ClothDepthCoverage depthCoverage(float2 positionCS, float4 uv, bool shado
     float wetness = clothWetness(mad(uv.xy, _LiquidTiling.zw, _LiquidTiling.xy), region);
 
     float cutoff = clothCutoff(detail);
-    Fabric fabric = { base.rgb, 0 };
+    float sheer = 0;
 #ifdef CLOTH_CUTOUT_LAYOUT
     float2 detailUV = mad(uv.xy, _Detail_mask_01_ST.xy, _Detail_mask_01_ST.zw);
-    fabric.sheer = sheerAmount(region, _Detail_mask_01.Sample(sampler_Detail_mask_01, detailUV).r);
-    fabric.dyedColor = tintCloth(base.rgb, uv.xy, _ColorMask, sampler_ColorMask);
+    sheer = sheerAmount(region, _Detail_mask_01.Sample(sampler_Detail_mask_01, detailUV).r);
+    base.rgb = tintCloth(base.rgb, uv.xy, _ColorMask, sampler_ColorMask);
     if (shadow)
         cutoff = _ShadowClip;
 #endif
-    float opacity = garmentOpacity(fabric, base.a, uv.xy, detail, distanceFade, wetness);
+    float opacity = garmentOpacity<Fabric>(base, uv.xy, detail, distanceFade, wetness, sheer);
     float threshold = ditherThreshold(positionCS, screenSize, targetScaleBias, projectionSign);
     return { maskedClothOpacity(opacity, uv, threshold, true), cutoff };
 }

@@ -19,7 +19,7 @@ float4 main(StageInput input) : SV_Target0
     clipCoverage(coverage, 0.5, _AlphaToMaskAvailable != 0);
 
     TangentFrame basis = TangentFrame(input.normalWS, input.tangentWS);
-    float3 fluidNormal = skinFluidMap<FluidFilter.Linear>().sampleLayer(uv).normalTS;
+    float3 fluidNormal = skinFluidMap<LinearFluidFilter>().sampleLayer(uv).normalTS;
     float3 liquidNormal = detail.liquidNormalTS;
     float3 combined = combineNormalSlopes(liquidNormal, fluidNormal);
     float3 normal = normalize(basis.toWorld(normalize(combined)));
