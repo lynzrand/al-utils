@@ -1,5 +1,7 @@
 # Amanatsu Location plugins
 
+> Note: This project was made possible with great help from LLM agents. If you are allergic to AI-generated code, please do not use this project.
+
 > What would you do with weapon-grade autism?
 
 Download the Windows x64 archives you want from [Releases](https://github.com/lynzrand/al-h-utils/releases). Install BepInEx 6 IL2CPP, run the game once, then exit and extract each archive beside `AmanatsuLocation.exe`. The archives include their `BepInEx` directory layout. The plugins were built against Amanatsu Location 1.0.4, Unity 6000.0.65f1 and BepInEx 6.0.0-be.788.
