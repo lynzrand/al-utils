@@ -1,7 +1,8 @@
+#define HAIR_NPR
 #include "Color.slang"
 
 [shader("fragment")]
-StageOutput main(StageInput input)
+float4 main(HairInput input) : SV_Target0
 {
     return shadeHair(input, false);
 }
