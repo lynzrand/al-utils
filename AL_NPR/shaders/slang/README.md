@@ -1,5 +1,7 @@
 # Character shaders in Slang
 
+For a traced game draw, pass and binding tables, material-specific behavior and an editing workflow, see the [maintainer’s guide](MAINTAINING.md).
+
 Edit the material source under `Face`, `Body`, `Hair`, `Cloth` and `ClothAlpha`. Each pass entry declares its Unity interface and selects the shared implementation. The recovered stock and NPR programs use the same material properties, textures, vertex transforms and coverage rules. The lighting and palette modules carry their differences.
 
 | To change | Start here |
@@ -13,7 +15,7 @@ Edit the material source under `Face`, `Body`, `Hair`, `Cloth` and `ClothAlpha`.
 | Stock light color, palette exposure and shadow ramps | `ToonPalette.slang`, material palette files |
 | Painted hair highlights | `Hair/Color.slang`, `HairLighting.slang` |
 
-For face color, start in `Face/ColorForward.slang`. Its surface and lighting functions use the same cheek, lip and nose makeup as the outline prepass.
+For face color, start in `Face/ForwardPS.slang`. Its surface and lighting functions use the same cheek, lip and nose makeup as the outline prepass.
 For body color, `Body/Color.slang` composes pigment, highlights and palette work for both color passes.
 Both materials share skin lighting, painted fluid, sweat and reflection in `Skin/`. Each material's `Material.slang` declares its Unity property layout.
 
@@ -32,7 +34,7 @@ cmake --build artifacts/npr/stock
 
 The compatibility command `python AL_NPR/tools/build_slang_shaders.py OUTPUT` uses the same CMake build. It accepts `--shading stock`, repeatable `--program`, `--target dxil` and `--dxil-profile sm_6_6`. Its historical `--filter-body-oil` switch is opt-in.
 
-Each tree produces 50 named stages covering Forward, ExtraPrePass, ShadowCaster, DepthOnly and DepthNormals for five materials. CMake compiles shared stage sources once. Ninja tracks imported modules and included pass bodies. Set `SLANGC` and `FXC` as CMake cache paths to choose compiler binaries. The character DXBC build lowers Slang to intermediate HLSL and uses FXC with `/Od /Gis` for arithmetic comparisons.
+Each tree produces 50 named stages covering Forward, ExtraPrePass, ShadowCaster, DepthOnly and DepthNormals for five materials. Entries with the same source, stage and compile definitions share a compiled program. Ninja tracks imported modules. Set `SLANGC` and `FXC` as CMake cache paths to choose compiler binaries. The character DXBC build lowers Slang to intermediate HLSL and uses FXC with `/Od /Gis` for arithmetic comparisons.
 
 ### Target features
 
@@ -40,7 +42,7 @@ Each tree produces 50 named stages covering Forward, ExtraPrePass, ShadowCaster,
 | --- | --- |
 | `SHADING=npr` or `stock` | Compile the modified material or the reconstruction of the game's original material. |
 | `SHADER_TARGET=dxbc` or `dxil` | Select bytecode format. The Unity bundle target consumes DXBC. |
-| `DXIL_PROFILE=sm_6_6` | Select a shader model for DXIL. Slang also accepts `sm_6_6+capability`. Run `slangc -h capability` for supported spellings. |
+| `DXIL_PROFILE=sm_6_6` | Select a shader model for DXIL. For example, `sm_6_6+rayquery` also declares ray-query support. Run `slangc -h capability` for supported spellings. |
 | `FILTER_BODY_OIL=ON` | Use cubic B-spline reconstruction of the painted body mask in the NPR body Forward stage. Set it to `OFF` to use the original sample. |
 
 ```powershell
@@ -48,7 +50,7 @@ cmake -S AL_NPR/shaders/slang -B artifacts/npr/sm66 -G Ninja -DSHADER_TARGET=dxi
 cmake --build artifacts/npr/sm66 --target BodyForwardPS
 ```
 
-DXIL requires a downstream DXC library. CMake looks for the SDK installation on Windows. Set `-DDXC=path/to/dxc` to select another installation. Hardware capabilities describe what instructions the compiler may emit. Unity keywords such as `_LIGHT_LAYERS` choose game permutations with specific bindings and stage interfaces. Each entry in `programs.json` records the keyword set for its recovered permutation and its source DXBC digest. A `stock` override records differences from the NPR trial. [Slang compiler options](https://shader-slang.org/slang/command-line-slangc-reference.html)
+DXIL requires a downstream DXC library. CMake looks for the SDK installation on Windows. Set `-DDXC=path/to/dxc` to select another installation. Hardware capabilities describe what instructions the compiler may emit. Unity keywords such as `_LIGHT_LAYERS` choose game permutations with specific bindings and stage interfaces. Each entry in `programs.json` records the keyword set for its recovered permutation and its source DXBC digest. A `stock` override records differences from the NPR trial. The optional `defines` array selects Slang compilation features for a stage and its imports. The NPR hair programs use `HAIR_NPR=1`. [Slang compiler options](https://shader-slang.org/slang/command-line-slangc-reference.html)
 
 ## Build a Unity bundle or extract original bytecode
 
@@ -84,7 +86,6 @@ The reference for stock shading is the original game DXBC. For NPR, compare with
 ## Performance experiments
 
 The optional `performance` target builds the AL_Performance map shadow caster, opaque replay control and twelve-tap depth-normal SSAO reconstruction. Set `PERFORMANCE_FEATURES` to a semicolon-separated list of experiment defines. The map shader supports `FAST_UNIFORM_PATH`, `FAST_OPAQUE_PATH` and `FAST_AUDITED_MAP_TEXTURES`. SSAO supports `SKIP_INVALID_SAMPLE` and `SKIP_ZERO_NUMERATOR`. The opaque control assumes the specific map002 textures and constants described in the [map shader experiment](../../../AL_Performance/tools/README.shader-patch.md).
-
 
 The map-shadow experiments matched the historical HLSL in 2,349,056 synthetic pixel comparisons across all eight feature combinations. All four SSAO configurations matched the historical HLSL on a 2560 × 1440 captured draw.
 

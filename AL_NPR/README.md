@@ -6,7 +6,7 @@ Extract the archive beside the game executable and double-click **Prepare AL Lig
 
 ## Editing the shaders
 
-Edit the Slang material or shared lighting function, then build the `bundle` target to try the compiled stage. The same source tree builds an editable stock reconstruction with `-DSHADING=stock`. Use `original-bundle` for a comparison with the exact game bytecode. Each target writes to the build directory. [Shader targets, feature flags and permutation coverage](shaders/slang/README.md)
+Edit the Slang material or shared lighting function, then build the `bundle` target to try the compiled stage. The same source tree builds an editable stock reconstruction with `-DSHADING=stock`. Use `original-bundle` for a comparison with the exact game bytecode. Each target writes to the build directory. [Shader targets and feature flags](shaders/slang/README.md) · [How the game draws a material](shaders/slang/MAINTAINING.md)
 
 ## Reproducing the release
 
