@@ -6,14 +6,36 @@ The face, body, hair, opaque cloth and cutout cloth directories contain the reco
 
 `programs.json` maps each of the five materials' ExtraPrePass, Forward, ShadowCaster, DepthOnly and DepthNormals vertex and fragment stages to an entry file. Several use identical source. Each record names the selected Unity keywords and the SHA-256 of the source DXBC. The source bundle was the painted hair and filtered face trial, SHA-256 `58d99ee2cf096505de48c8fcc731c0a439533600f389e61ecf76da9857ace5dd`. The manifest covers one non-instanced permutation per stage. Instancing, DOTS and alternative material keyword permutations require their own binding and control-flow checks.
 
-From the repository root, put Slang and the x64 Windows SDK shader tools on PATH and run
+## Building stages
+
+Install CMake 3.21 or newer, native Ninja and `slangc`. For game bytecode, install Windows SDK FXC. From the repository root:
 
 ```powershell
-python AL_NPR/tools/build_slang_shaders.py artifacts/npr/slang-build
-python AL_NPR/tools/build_slang_shaders.py artifacts/npr/slang-dxil --target dxil
+cmake -S AL_NPR/shaders/slang -B artifacts/npr/shaders-sm5 -G Ninja
+cmake --build artifacts/npr/shaders-sm5
+cmake --build artifacts/npr/shaders-sm5 --target BodyForwardPS
 ```
 
-Use `--program BodyForwardPS` to build one program. Slang 2026.14.1 and Windows SDK 10.0.26100.0 were used for the comparison build. The DXBC build preserves integer bit masks passed through float registers with FXC's IEEE-strict, unoptimized backend. Enabling FXC optimization removed bound light lists from the resulting shaders.
+The default target emits one named DXBC file per manifest record in the build directory. Ninja tracks imported modules and included pass bodies. Entries with identical source and stage share a compile. Set `-DSLANGC=...` or `-DFXC=...` when configuring to select a specific executable. The existing Python command also accepts `--program` and exports the selected files to its output directory.
+
+### Target features and material variants
+
+| Choice | Example | What it controls |
+| --- | --- | --- |
+| Bytecode and hardware capabilities | `-DSHADER_TARGET=dxil -DDXIL_PROFILE=sm_6_6` | Slang's output target and shader model. The game uses DXBC SM5. |
+| Material behavior | `-DFILTER_BODY_OIL=OFF` | Selects the original body mask sample. The CMake default enables the release filter. The compatibility Python command retains its original opt-in switch. |
+| Unity keywords | `_FORWARD_PLUS`, `_LIGHT_LAYERS` | The manifest records the permutation each recovered program implements. Further permutations need matching stage logic, Unity resource bindings and signatures. |
+
+Use a separate build tree for each configuration you want to keep:
+
+```powershell
+cmake -S AL_NPR/shaders/slang -B artifacts/npr/shaders-sm66 -G Ninja -DSHADER_TARGET=dxil -DDXIL_PROFILE=sm_6_6
+cmake --build artifacts/npr/shaders-sm66 --target BodyForwardPS
+```
+
+For an optional hardware capability, Slang accepts `-profile <profile>+<capability>`, which you can pass as `DXIL_PROFILE`. Use `slangc -h capability` for the names recognized by your compiler. The target device and graphics API must support the features you use. [Slang compiler options](https://shader-slang.org/slang/command-line-slangc-reference.html)
+
+Slang 2026.14.1 and Windows SDK 10.0.26100.0 were used for the comparison build. The DXBC build preserves integer masks passed through float lanes with FXC's IEEE-strict, unoptimized backend. Enabling FXC optimization removed bound light lists from the resulting shaders.
 
 All 50 original/translated stage pairs matched input and output semantics, component masks, register numbers, component types and constant-buffer slots. D3D11 WARP created every translated shader. In capture `unified-visible-primary_frame14117.rdc`, substituting the original trial DXBC and then the translated DXBC gave identical packed HDR output for face draw 5012 (27,836 covered pixels) and body draw 5621 (42,480). Both substitutions visibly changed the captured baseline. Hair and clothing have compile, interface and driver-creation coverage. Their image parity and the frame time of these comparison builds remain unverified.
 
