@@ -2,9 +2,7 @@ import Coverage;
 import MaterialColor;
 import Reflectance;
 import ToonPalette;
-#ifdef HAIR_NPR
-import HairLighting;
-#endif
+import Hair.LightResponse;
 
 import Hair.Bindings;
 import Hair.Surface;
@@ -64,14 +62,21 @@ float3 finishHairPalette(float3 pigment, HairStripe stripe, HairSurface s, HairI
     return lerp(clamp(result, 0, 0.98), result, max(stripe.intensity, rim));
 }
 
+#ifdef HAIR_NPR
+typealias HairResponse = ToonHairResponse;
+#else
+typealias HairResponse = StockHairResponse;
+#endif
+
 public float4 shadeHair(HairInput input, bool opaqueBase)
 {
     HairSurface surface = makeHairSurface(input);
-    HairLights lights = gatherHairLights(surface, input);
+    HairResponse response = HairResponse(input, surface.view);
+    HairLights lights = gatherHairLights(response, surface, input);
     HairMasks masks = sampleHairMasks(input.uv1Uv0.zw);
     float visibility = hairKeyVisibility(input.positionWS.xyz);
     HairKey key = prepareHairKey(surface, input, visibility);
-    HairStripe stripe = paintStrands(strandPigment(masks), masks, surface, input, visibility, key.luma);
+    HairStripe stripe = paintStrands(strandPigment(masks), masks, surface, input, visibility, key.luma, response.baseStripeGain);
     float3 pigment = wetHair(stripe.pigment, surface, input, visibility);
 
     float fresnel = max(surface.viewEdge, 0.0001);
@@ -87,9 +92,7 @@ public float4 shadeHair(HairInput input, bool opaqueBase)
     float3 keyFill = (min(key.palette.logBoost, 1) * 0.1) * (key.band * saturate((key.rampFacing + 1) * 0.5));
     color += saturate(mad(pigment, 7, 0.3)) * (fill * (stripe.intensity * 0.2 + 1) + keyFill);
 #endif
-#ifdef HAIR_NPR
-    color += finishHairReflection(lights.reflected, masks.detail.r, _Highlight_color01);
-#endif
+    color += response.tintReflection(lights.reflected, masks.detail.r, _Highlight_color01);
     float threshold = ditherThreshold(input.positionCS.xy, screenSize, screenScaleBias, projectionSign);
     float alpha = passesDither(_Dither, threshold) ? (opaqueBase ? 1 : max(saturate(_TipAlpha), 0.01)) : 0;
     clipCoverage(alpha, 0.01, alphaToMaskAvailable != 0);

@@ -17,11 +17,7 @@ float3 samplePaintedStripe(float2 uv, HairSurface s)
     location += float2(tangentView.x * _hilightmove2 * -0.01,
                        stretch.x * mad(tangentView.y * _hilightmove, -0.1, _hilightmove3));
     location.y += (dot(s.basis.normal.xy, s.key.xz) * 0.4 - 0.2) * cameraView.y / (cameraView.z + 0.42) * 2.5;
-    float3 stripe = paintedHighlight.Sample(paintedHighlightSampler, location).rgb;
-#ifdef HAIR_NPR
-    stripe *= 0.26;
-#endif
-    return stripe;
+    return paintedHighlight.Sample(paintedHighlightSampler, location).rgb;
 }
 
 public float3 wetHair(float3 pigment, HairSurface s, HairInput input, float keyVisibility)
@@ -63,9 +59,9 @@ public struct HairStripe
 };
 
 public HairStripe paintStrands(float3 pigment, HairMasks masks, HairSurface s, HairInput input,
-                        float keyVisibility, float keyLuma)
+                        float keyVisibility, float keyLuma, float stripeGain)
 {
-    float3 stripe = samplePaintedStripe(input.uv1Uv0.xy, s);
+    float3 stripe = stripeGain * samplePaintedStripe(input.uv1Uv0.xy, s);
     float secondaryGain = min(sqrt(saturationOf(_Highlight_color02.rgb)) * 0.8 + 0.4, 2);
     float secondaryWeight = secondaryGain * _Highlight_color02.a;
     float3 secondary = saturate(secondaryGain * (_Highlight_color02.a * _Highlight_color02.rgb));
