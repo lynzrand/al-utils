@@ -1,3 +1,6 @@
+import MaterialColor;
+import MaterialNoise;
+
 // Object-space gradient noise modulates the stock skin's surface detail.
 // Lock the lattice to the mesh so the pattern follows the character.
 float2 grainGradient(float2 cell)
@@ -20,4 +23,23 @@ public float skinGrain(float2 positionOS)
     float lower = mad(blend.x, lowerRight - lowerLeft, lowerLeft);
     float upper = mad(blend.x, upperRight - upperLeft, upperLeft);
     return mad(mad(blend.y, upper - lower, lower), 0.5, 0.5);
+}
+
+public float sweatHeight(float2 uv, float time, float2 heightRange)
+{
+    float2 grid = (uv + float2(0, time * 0.003)) * 96;
+    float2 distances = sweatCellDistances(floor(grid), frac(grid), time * 0.1);
+    return saturate(mad(distances.x + distances.y, 0.5, -heightRange.x) / (heightRange.y - heightRange.x));
+}
+
+// Wet skin sharpens the probe across the surface. Local droplets also
+// sharpen it and give it a minimum strength independently of the skin grain.
+public float3 wetSkinReflection(TextureCube<float4> probe, SamplerState probeSampler, float4 hdr,
+                                float3 reflectionDirection, float2 positionOS, float wetness, float coverage)
+{
+    float roughness = 1 - max(coverage * 0.9, wetness * 0.9);
+    float4 sample = probe.SampleLevel(probeSampler, reflectionDirection, reflectionProbeMip(roughness));
+    float strength = max(skinGrain(positionOS) * (wetness * 0.1), coverage * 0.25);
+    float3 reflection = strength * decodeProbe(sample, hdr);
+    return lerp(reflection, dot(reflection, luminance601), 0.75);
 }
