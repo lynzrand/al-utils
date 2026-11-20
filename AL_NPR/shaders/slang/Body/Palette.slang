@@ -44,7 +44,7 @@ BodyPalette sampleBodyPalette(BodySurface s, BodyKey k, BodyShade geometry, Skin
     float diffuse = dot(lights.diffuse, luminance709);
     float ramp = rampOffset + k.palette.rampCoordinate(facing);
     float lamp = _Lamp.Sample(sampler_Lamp, float2(saturate(diffuse + ramp))).b;
-    float lit = skinPaletteWeight(saturate(k.band + diffuse), lights);
+    float lit = lights.paletteWeight(saturate(k.band + diffuse));
     p.shadowBand = lit * (1 - saturate(lamp));
 
     PaletteFill fill = PaletteFill(k.palette, key, probe.evaluate(s.basis.normal), facing, lit);
@@ -94,11 +94,11 @@ public float3 illuminateBody(BodySurface s, BodyKey k, BodyShade shade, SkinLigh
     float rimWeight = contrast * rim.secondary;
     lit = lerp(lit, tintSaturation(highlight + lit, 1.5), saturate(mad(shineWeight, 3, rimWeight)));
     lit = rim.transmission + (rimWeight + lit);
-    float3 diffuse = skinBounce(lights);
+    float3 diffuse = lights.bounce();
     float wrapped = saturate((dot(k.rampLight, s.artisticNormal) + 1) * 0.5);
     float3 bounce = min(k.palette.logBoost, 1) * 0.1 * (k.band * wrapped)
                   + mad(max(1 - shade.occlusion, 0), 0.25, 0.75) * diffuse * mad(saturationOf(diffuse), 0.75, 0.25);
     float3 capped = clamp(lit * 0.98, 0, 0.98);
     lit = mad(saturate(mad(s.pigment, 7, 0.3)), bounce, lerp(capped, lit * 0.98, max(shine, rim.main)));
-    return applySkinFill(lit, s.pigment, probeLight, lights);
+    return lights.applyFill(lit, s.pigment, probeLight);
 }

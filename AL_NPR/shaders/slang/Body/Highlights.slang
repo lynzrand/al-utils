@@ -25,8 +25,8 @@ public BodyKey prepareBodyKey(BodySurface s, bool front, float visibility, SkinL
     k.faceLight = directions.diffuse;
     k.rimLight = directions.rim;
     k.rampLight = directions.ramp;
-    k.band = k.bandVisibility * skinPaletteWeight(saturate((dot(s.artisticNormal, k.faceLight) - 0.05) * 5), lights);
-    k.surfaceBand = k.bandVisibility * skinPaletteWeight(saturate((dot(normalize(s.basis.normal), k.faceLight) - 0.05) * 5), lights);
+    k.band = k.bandVisibility * lights.paletteWeight(saturate((dot(s.artisticNormal, k.faceLight) - 0.05) * 5));
+    k.surfaceBand = k.bandVisibility * lights.paletteWeight(saturate((dot(normalize(s.basis.normal), k.faceLight) - 0.05) * 5));
     return k;
 }
 

@@ -7,36 +7,20 @@ import Face.Bindings;
 import Body.Bindings;
 #endif
 import PunctualLighting;
-import Reflectance;
+import Skin.LightResponse;
 import ForwardPlus;
 #if !SKIN_PREPASS
 import PunctualShadows;
 #endif
 #if SKIN_NPR
-import SceneLighting;
 import MapLighting;
+public typealias SkinLights = ToonSkinResponse<SKIN_FACE != 0>;
+#else
+public typealias SkinLights = StockSkinResponse<SKIN_PREPASS != 0>;
 #endif
 
-public struct SkinLights
-{
-    public float3 diffuse;
-    public float3 diffuseBandNormal;
-    public float3 wrapped;
-    public float3 band;
-    public float3 incident;
-}
-
-void accumulateSkinLight(inout SkinLights sum, float3 normal, float3 bandNormal,
-                         float3 direction, float3 radiance)
-{
-    DiffuseLobes bandSurface = DiffuseLobes(bandNormal, direction);
-    sum.diffuseBandNormal = mad(radiance, bandSurface.cosine, sum.diffuseBandNormal);
-    sum.diffuse = mad(radiance, DiffuseLobes(normal, direction).cosine, sum.diffuse);
-    sum.wrapped = mad(bandSurface.wrapped, radiance, sum.wrapped);
-}
-
-void accumulatePunctualSkin(inout SkinLights sum, uint index, float3 positionWS,
-                            float3 normal, float3 bandNormal, float shadowFade)
+void accumulatePunctualSkin<T : ISkinLightResponse>(
+    inout T sum, uint index, float3 positionWS, float3 normal, float3 bandNormal, float shadowFade)
 {
 #if !SKIN_PREPASS
     uint layer = (SKIN_NPR != 0) ? 2u : asuint(renderingLayer.x);
@@ -48,31 +32,17 @@ void accumulatePunctualSkin(inout SkinLights sum, uint index, float3 positionWS,
 #endif
 #if SKIN_PREPASS
     float visibility = 1;
-    sum.incident = mad(light.color, light.attenuation, sum.incident);
 #else
     float visibility = punctualVisibility(_AdditionalLightsShadowmapTexture, shadowCompare1,
         index, positionWS, light.direction, shadowFade, (SKIN_FACE != 0) && (SKIN_NPR != 0));
 #endif
-    float3 radiance = (light.attenuation * visibility) * light.color;
-#if SKIN_NPR
-    float3 incident = light.attenuation * light.color;
-    float gain = rcp(directLightCompression(incident));
-    radiance *= gain;
-    float facing = bandFacing(bandNormal, light.direction);
-#if SKIN_FACE
-    sum.band += visibleFaceBand((incident * gain) * facing, visibility);
-#else
-    sum.band += perLightBand(radiance * facing);
-#endif
-#else
-    accumulateSkinLight(sum, normal, bandNormal, light.direction, radiance);
-#endif
+    sum.addPunctual(light, visibility, normal, bandNormal);
 }
 
 public SkinLights evaluateSkinLights(StageInput input, float3 normal, float3 bandNormal)
 {
     ForwardPlusGrid grid = ForwardPlusGrid(_FPParams0, _FPParams1, _FPParams2.x);
-    SkinLights sum = {};
+    SkinLights sum = SkinLights();
     float3 positionWS = input.positionWS.xyz;
     float3 cameraOffset = positionWS - _WorldSpaceCameraPos;
     float fade = 0;
@@ -85,8 +55,7 @@ public SkinLights evaluateSkinLights(StageInput input, float3 normal, float3 ban
     {
         MapDirectional light = mapDirectionals[i];
         float3 direction = light.direction.xyz * rsqrt(max(dot(light.direction.xyz, light.direction.xyz), 1e-20));
-        float3 radiance = light.color.rgb * rcp(directLightCompression(light.color.rgb));
-        sum.band += perLightBand(radiance * bandFacing(bandNormal, direction));
+        sum.addDirectional(direction, light.color.rgb, bandNormal);
     }
 #else
     [loop] for (uint i = 0; i < grid.directionalCount; ++i)
@@ -100,11 +69,7 @@ public SkinLights evaluateSkinLights(StageInput input, float3 normal, float3 ban
     uint index;
     [loop] while (cluster.next(index))
         accumulatePunctualSkin(sum, index, positionWS, normal, bandNormal, fade);
-#if SKIN_NPR
-    // The NPR band supplies the direct response. The original ramp still
-    // samples its unlit column for the material-specific palette tint.
-    sum.band *= rcp(bandCompression(sum.band));
-#endif
+    sum.finishAccumulation();
     return sum;
 }
 
@@ -137,32 +102,5 @@ public float skinMainVisibility(float3 positionWS)
     float3 uvz = mainShadowCoord(positionWS);
     float shadow = _MainLightShadowmapTexture.SampleCmpLevelZero(shadowCompare1, uvz.xy, uvz.z);
     return (uvz.z > 0 && uvz.z < 1) ? mad(shadow, mainShadowParams.x, 1 - mainShadowParams.x) : 1;
-#endif
-}
-
-public float skinPaletteWeight(float stockWeight, SkinLights lights)
-{
-#if SKIN_NPR
-    return bandWeight(lights.band);
-#else
-    return stockWeight;
-#endif
-}
-
-public float3 skinBounce(SkinLights lights)
-{
-#if SKIN_NPR
-    return lights.band;
-#else
-    return lerp(lights.diffuseBandNormal, lights.wrapped, 0.5);
-#endif
-}
-
-public float3 applySkinFill(float3 color, float3 pigment, float3 ambient, SkinLights lights)
-{
-#if SKIN_NPR
-    return mad(pigment, skinFill(ambient, skinPaletteWeight(0, lights)), color);
-#else
-    return color;
 #endif
 }

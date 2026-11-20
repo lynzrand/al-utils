@@ -142,10 +142,10 @@ public FacePalette facePalette(FaceSurface s, FaceKey k, FaceRim rim, SkinLights
                + k.palette.rampCoordinate(k.rampFacing);
     float localLight = dot(lights.diffuse, luminance709);
     float rampSample = _Lamp.Sample(sampler_Lamp, float2(saturate(ramp + localLight))).b;
-    float direct = skinPaletteWeight(saturate(mad(k.diffuseWeight, 1 - s.detail.secondary.g, localLight)), lights);
+    float direct = lights.paletteWeight(saturate(mad(k.diffuseWeight, 1 - s.detail.secondary.g, localLight)));
     float floorWeight = shadowFloor(k.color);
     float3 geometricNormal = normalize(s.basis.normal);
-    float geometricBand = skinPaletteWeight(saturate((dot(geometricNormal, k.diffuseDirection) - 0.05) * 5), lights);
+    float geometricBand = lights.paletteWeight(saturate((dot(geometricNormal, k.diffuseDirection) - 0.05) * 5));
     float band = max(floorWeight, k.toonVisibility * geometricBand);
     float3 objectNormal = mad(worldToObject2.xyz, geometricNormal.z,
         mad(worldToObject0.xyz, geometricNormal.x, worldToObject1.xyz * geometricNormal.y));
@@ -174,7 +174,7 @@ public FacePalette facePalette(FaceSurface s, FaceKey k, FaceRim rim, SkinLights
     float3 highlight = clamp(glossLight * (mad(saturationOf(glossTint), 2.2, 0.8) * glossTint), 0, 99);
     result.color = lerp(saturate(result.color), tintSaturation(highlight + saturate(result.color), 1.5),
                         saturate(mad(glossWeight, 3, chromaMask * rim.secondary)));
-    float3 bounce = skinBounce(lights);
+    float3 bounce = lights.bounce();
     result.bounce = mad(mad(max(1 - s.detailShade, 0), 0.25, 0.75) * bounce,
         mad(saturationOf(bounce), 0.75, 0.25), min(k.palette.logBoost, 1) * 0.1 * (k.diffuseWeight * k.wrap.y));
     return result;

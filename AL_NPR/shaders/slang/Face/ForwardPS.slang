@@ -24,7 +24,7 @@ float4 main(StageInput input) : SV_Target0
     float3 bounded = clamp(lit * 0.98, 0, 0.98);
     float3 color = mad(saturate(mad(surface.pigment, 7, 0.3)), palette.bounce,
                        mad(max(gloss, rim.outer), mad(lit, 0.98, -bounded), bounded));
-    color = applySkinFill(color, surface.pigment, palette.ambient, lights);
+    color = lights.applyFill(color, surface.pigment, palette.ambient);
     color = lerp(color, _Nose_line_color.rgb, surface.makeup.nose.b * _Nose_line_color.a);
     float3 line = faceLineTint(surface.view, surface.basis.normal, surface.detail.secondary.b, surface.makeup.pigment);
     return float4(lerp(color, line, surface.lineCoverage), _AlphaToMaskAvailable != 0 ? opacity : 1);
