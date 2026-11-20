@@ -3,7 +3,6 @@ import argparse
 from pathlib import Path
 
 from build_view_band_trial import build_material_bundle
-from build_skin_assets import WORKSPACE
 from compiled_material_entry import compile_entry, bind_entry
 from patch_skin_light_shoulder import decode_program, emit, encode_program
 
@@ -52,6 +51,6 @@ if __name__ == "__main__":
     parser.add_argument("source",type=Path)
     parser.add_argument("output",type=Path)
     args = parser.parse_args()
-    entry = compile_entry(WORKSPACE / "AL_NPR/shaders/FaceShadow.hlsl","FaceShadow")
-    band = compile_entry(WORKSPACE / "AL_NPR/shaders/FaceShadow.hlsl","FaceBand")
+    entry = compile_entry("FaceShadow")
+    band = compile_entry("FaceBand")
     build_material_bundle(args.source,args.output,lambda code,_:filter_face(code,entry,band),targets=(76,))

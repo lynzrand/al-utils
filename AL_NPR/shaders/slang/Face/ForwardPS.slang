@@ -1034,8 +1034,7 @@ StageOutput main(StageInput stage_input)
         r59.xyz = r46.xyz * r47.xxx;
         r59.xyz = r59.xyz * r43.www;
         r59.w = r24.w;
-        r61.xyz = perLightBand(r59.xyz);
-        r55.xyz = r61.xyz * r59.www;
+        r55.xyz = visibleFaceBand(r59.xyz, r59.w);
         r43.xyz = r55.xyz + r41.xyz;
         uint3 _5550 = asuint(r25.www);
         bool3 _5555 = bool3(_5550.x != 0u, _5550.y != 0u, _5550.z != 0u);
@@ -1386,10 +1385,7 @@ StageOutput main(StageInput stage_input)
     r4.w = mad(r17.x, r17.x, (-r4.wwww).w);
     r19.xyz = mad(UnityPerDrawData[31u].xyz, r4.www, r20.xyz);
     r18.xyz = r18.xyz + r19.xyz;
-    r58.x = clamp(dot(r18.xyz, float3(0.212673f, 0.715152f, 0.072175f)).x, 0.0f, 1.0f);
-    r58.y = r53.w * 0.49f;
-    r58.x = mad(r58.x, 0.84f, r58.y);
-    r56.x = r58.x * 0.06f;
+    r56.x = skinFill(r18.xyz, r53.w);
     r0.x = 1.0f;
     r0.y = r0.x + (-0.05f);
     r0.y = clamp((r0.yyyy * 1.5384616f.xxxx).y, 0.0f, 1.0f);

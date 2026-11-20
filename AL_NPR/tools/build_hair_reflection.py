@@ -5,7 +5,7 @@ import hashlib
 from pathlib import Path
 
 from compiled_material_entry import bind_entry, compile_entry
-from build_skin_assets import (WORKSPACE, U32, ROW, attach_map_parameters, blob_references,
+from build_skin_assets import (U32, ROW, attach_map_parameters, blob_references,
                                build_container, constant_buffer_register_count, containers,
                                index, load, parts, repack)
 from patch_skin_light_shoulder import SOURCE_XYZX, TEMP_XYZ, decode_program, emit, encode_program, imm32, shoulder
@@ -171,9 +171,8 @@ def build(source, output, style, specular_only=False):
     data, rows = index(tree)
     changes = {}
     defines = {"ribbon": ("HAIR_RIBBON",), "painted": ("HAIR_PAINTED",), "gloss": ()}
-    path = WORKSPACE / "AL_NPR/shaders/HairReflection.hlsl"
-    entries = (compile_entry(path,"HairReflection",defines[style]),
-               compile_entry(path,"HairDiffuseGain"), compile_entry(path,"HairFinish"))
+    entries = (compile_entry("HairReflection",defines[style]),
+               compile_entry("HairDiffuseGain"), compile_entry("HairFinish"))
     for slot, refs in blob_references(tree["m_ParsedForm"]).items():
         if not any(p == "UniversalForward" and s == "progFragment" and "_FORWARD_PLUS" in k
                    and "DOTS_INSTANCING_ON" not in k for _,_,p,s,k in refs):

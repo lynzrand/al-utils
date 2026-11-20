@@ -1,14 +1,11 @@
-"""Compile the shared HLSL band and fill into AL's existing skin and fabric programs."""
+"""Compile the shared Slang band and fill into AL's existing skin and fabric programs."""
 
 import argparse
 import hashlib
-import os
 from pathlib import Path
-import shutil
-import subprocess
-import tempfile
 
-from build_skin_assets import SKIN, WORKSPACE, parts
+from build_skin_assets import SKIN
+from compiled_material_entry import compile_entry
 from build_toon_band_trials import LUMA, band_color
 from build_view_band_trial import build_material_bundle
 from patch_skin_light_shoulder import SOURCE_XYZX, TEMP_XYZ, decode_program, emit, encode_program, imm32
@@ -16,35 +13,6 @@ from patch_skin_light_shoulder import SOURCE_XYZX, TEMP_XYZ, decode_program, emi
 
 BASE_SHA = "63e6be4aed4878f1515d71014f0e5c411f832509df80d2540c185a21a798c4bd"
 UNBENT_SHA = "f34398d9778177fb9f56ee01fa52767af82a55a44f60ba4812cdf13cdd936f3e"
-SOURCE = WORKSPACE / "AL_NPR/shaders/SceneToonLighting.hlsl"
-
-
-def find_fxc():
-    compiler = shutil.which("fxc")
-    if compiler:
-        return compiler
-    kit = Path(os.environ["ProgramFiles(x86)"]) / "Windows Kits/10/bin"
-    candidates = list(kit.glob("10.*/x64/fxc.exe"))
-    if not candidates:
-        raise FileNotFoundError("Install the Windows SDK FXC compiler or supply --fxc")
-    return max(candidates, key=lambda p: tuple(map(int, p.parents[1].name.split("."))))
-
-
-def compile_entries(source, fxc, directory, normal_bend):
-    entries = {}
-    names = ["PerLightBand", "SkinFill", "FabricFill"]
-    if normal_bend:
-        names.append("BandFacing")
-    for name in names:
-        path = directory / (name + ".cso")
-        subprocess.run([fxc, "/nologo", "/O3", "/T", "ps_5_0", "/E", name, "/Fo", path, source], check=True)
-        _, instructions = decode_program(dict(parts(path.read_bytes()))[b"SHEX"])
-        declarations = [106, 98, 98, 101, 104] if name == "BandFacing" else [106, 98, 101, 104]
-        start = len(declarations)
-        if [t[0] & 2047 for t in instructions[:start]] != declarations or instructions[-1] != emit(62):
-            raise ValueError(f"Unexpected input or output declarations for {name}")
-        entries[name] = instructions[start-1][1], instructions[start:-1]
-    return entries
 
 
 def bind(entry, inputs, output, scratch):
@@ -144,13 +112,16 @@ def patch(code, shader, entries):
     return encode_program(version,output)
 
 
-def build(source, output, fxc=None, hlsl=SOURCE):
+def build(source, output, fxc=None):
     digest = hashlib.sha256(source.read_bytes()).hexdigest()
     if digest not in (BASE_SHA, UNBENT_SHA):
         raise ValueError("Expected either the unbent per-light pair or its November 18 camera-bent version")
-    with tempfile.TemporaryDirectory() as tmp:
-        entries = compile_entries(hlsl, fxc or find_fxc(), Path(tmp), normal_bend=digest == UNBENT_SHA)
-        build_material_bundle(source, output, lambda code, shader: patch(code,shader,entries))
+    names = ["PerLightBand", "SkinFill", "FabricFill"]
+    if digest == UNBENT_SHA:
+        names.append("BandFacing")
+    entries = {name: compile_entry(name, fxc=fxc) for name in names}
+    build_material_bundle(source, output, lambda code, shader: patch(code, shader, entries))
+
 
 
 if __name__ == "__main__":

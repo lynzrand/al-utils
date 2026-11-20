@@ -18,4 +18,4 @@ python AL_NPR/tools/validate_toon_bundle.py "$work/release.unity3d"
 python AL_NPR/tools/release_delta.py "$env:AL_GAME_PATH" "$work/lighting.patch" --create-from "$work/release.unity3d"
 ~~~
 
-The release patch reconstructs and verifies the tested bundle with SHA-256 36ae8431f0abc87cefcf487385c345859d89347c94106e48e6ae997a2493aec1. The lighting expressions are in shaders/SceneToonLighting.hlsl, shaders/HairReflection.hlsl and shaders/FaceShadow.hlsl. The body oil module is shaders/slang/FluidMask.slang.
+The release patch reconstructs and verifies the tested bundle with SHA-256 36ae8431f0abc87cefcf487385c345859d89347c94106e48e6ae997a2493aec1. Edit the [Slang modules](shaders/slang/README.md) for lighting, hair, shadows and body oil. The same functions feed the representative stages and the release builder's SM5 entries. The handwritten HLSL listings are historical references.

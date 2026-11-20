@@ -1,22 +1,41 @@
 """Compile handwritten material functions and bind them into Unity's original SM5 programs."""
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 
-from build_material_response import find_fxc
 from build_skin_assets import parts
 from patch_skin_light_shoulder import decode_program, emit
 
 
-def compile_entry(source, entry, defines=()):
+SLANG = Path(__file__).resolve().parents[1] / "shaders/slang"
+
+
+def find_fxc():
+    compiler = shutil.which("fxc")
+    if compiler:
+        return compiler
+    kit = Path(os.environ["ProgramFiles(x86)"]) / "Windows Kits/10/bin"
+    candidates = list(kit.glob("10.*/x64/fxc.exe"))
+    if not candidates:
+        raise FileNotFoundError("Install the Windows SDK FXC compiler or supply --fxc")
+    return max(candidates, key=lambda p: tuple(map(int, p.parents[1].name.split("."))))
+
+
+def compile_entry(entry, defines=(), *, source="BundleEntries.slang", slangc="slangc", fxc=None):
+    """Lower a Slang fragment function and extract its optimized SM5 instructions."""
     with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / (entry + ".cso")
-        options = ["/D" + name + "=1" for name in defines]
-        subprocess.run([find_fxc(), "/nologo", "/O3", "/T", "ps_5_0", "/E", entry,
-                        *options, "/Fo", path, source], check=True)
-        _, instructions = decode_program(dict(parts(path.read_bytes()))[b"SHEX"])
+        hlsl = Path(tmp) / (entry + ".hlsl")
+        binary = hlsl.with_suffix(".cso")
+        subprocess.run([slangc, SLANG / source, "-I", SLANG, "-entry", entry,
+                        "-stage", "fragment", "-target", "hlsl", "-profile", "sm_5_0",
+                        "-fp-mode", "precise", *["-D" + name + "=1" for name in defines], "-o", hlsl], check=True)
+        subprocess.run([fxc or find_fxc(), "/nologo", "/O3", "/T", "ps_5_0",
+                        "/E", entry, "/Fo", binary, hlsl], check=True)
+        _, instructions = decode_program(dict(parts(binary.read_bytes()))[b"SHEX"])
     decl, = [i for i, t in enumerate(instructions) if t[0] & 2047 == 104]
-    if instructions[-1] != emit(62):
+    if instructions[-1] != emit(62) or any(t[0] & 2047 in (62, 63) for t in instructions[decl+1:-1]):
         raise ValueError("Expected a single pixel shader return")
     return instructions[decl][1], instructions[decl+1:-1]
 

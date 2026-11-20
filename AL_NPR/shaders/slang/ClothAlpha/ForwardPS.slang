@@ -1689,10 +1689,7 @@ StageOutput main(StageInput stage_input)
     r4.w = mad(r5.x, r5.x, (-r4.wwww).w);
     r18.xyz = mad(UnityPerDrawData[31u].xyz, r4.www, r19.xyz);
     r14.xyz = r14.xyz + r18.xyz;
-    r59.x = clamp(dot(r14.xyz, float3(0.212673f, 0.715152f, 0.072175f)).x, 0.0f, 1.0f);
-    r59.y = r50.w * 0.49f;
-    r59.x = mad(r59.x, 0.84f, r59.y);
-    r56.x = r59.x * 0.97f;
+    r56.x = fabricFill(r14.xyz, r50.w);
     r0.x = _MainLightShadowmapTexture.SampleCmpLevelZero(shadowCompare1, r0.xy, r0.z);
     r0.y = _2118.y + 1.0f;
     r0.x = mad(r0.x, LightShadowsData[27u].x, r0.y);

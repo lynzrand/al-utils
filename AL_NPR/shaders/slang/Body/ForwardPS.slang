@@ -2040,10 +2040,7 @@ StageOutput main(StageInput stage_input)
     r5.w = mad(r10.x, r10.x, (-r5.wwww).w);
     r12.xyz = mad(UnityPerDrawData[31u].xyz, r5.www, r15.xyz);
     r11.xyz = r11.xyz + r12.xyz;
-    r58.x = clamp(dot(r11.xyz, float3(0.212673f, 0.715152f, 0.072175f)).x, 0.0f, 1.0f);
-    r58.y = r53.w * 0.49f;
-    r58.x = mad(r58.x, 0.84f, r58.y);
-    r56.x = r58.x * 0.06f;
+    r56.x = skinFill(r11.xyz, r53.w);
     r0.x = 1.0f;
     r0.y = r0.x + (-0.05f);
     r0.y = clamp((r0.yyyy * 1.5384616f.xxxx).y, 0.0f, 1.0f);

@@ -1,6 +1,6 @@
 # Character lighting source
 
-[SceneToonLighting.hlsl](SceneToonLighting.hlsl) is the short version to read first. FXC compiles `BandFacing`, `PerLightBand`, `SkinFill`, and `FabricFill` from this file into the skin head, skin body, opaque cloth and alpha-clipped cloth shader programs. The other functions describe the surrounding ALU instructions retained from the November 18 build. [PreviousMaterialFill.hlsl](PreviousMaterialFill.hlsl) reconstructs the previous fill at the same two points in the material pipeline.
+Start with the [Slang sources and build instructions](slang/README.md). The bundle builder compiles toon bands and diffuse fill from [SceneLighting.slang](slang/SceneLighting.slang) into the skin and fabric keyword variants. [SceneToonLighting.hlsl](SceneToonLighting.hlsl) is a historical reference for the November 18 arithmetic. [PreviousMaterialFill.hlsl](PreviousMaterialFill.hlsl) reconstructs the previous fill at the same two points in the material pipeline.
 
 ```mermaid
 flowchart TD
@@ -32,9 +32,9 @@ To regenerate a listing from local game assets, run `export_material_programs.py
 
 ## Scene-lit hair and face shadow trials
 
-[HairReflection.hlsl](HairReflection.hlsl) contains the reflection shape, diffuse light cap and reflection tint. The painted version samples the artist's highlight texture along the strand at a coordinate derived from each light's half-vector. The original material contributes a weaker painted stripe. Each eligible punctual source supplies its own distance falloff, spot falloff and shadow visibility. Authored map directionals supply color and direction with unit visibility. Both hair color passes use this calculation. The base pass keeps its opaque dither coverage and the forward overlay keeps its material alpha. The hair outline uses the original shader.
+[HairLighting.slang](slang/HairLighting.slang) contains the reflection shape, diffuse light cap and reflection tint. The painted version samples the artist's highlight texture along the strand at a coordinate derived from each light's half-vector. The original material contributes a weaker painted stripe. Each eligible punctual source supplies its own distance falloff, spot falloff and shadow visibility. Authored map directionals supply color and direction with unit visibility. Both hair color passes use this calculation. The base pass keeps its opaque dither coverage and the forward overlay keeps its material alpha. The hair outline uses the original shader.
 
-[FaceShadow.hlsl](FaceShadow.hlsl) samples punctual shadow visibility with a nine-tap tent. The face chooses its toon band from the unoccluded incident light and weights the result by the filtered visibility. The night beach comparison showed that disabling character casting removed the broad contour, and hair alone reproduced it. Hiding the face shadow proxy alone made little difference. The additional-light atlas was 8192 × 4096 D16. D32 softened a secondary contour. Applying visibility after the band made the larger difference in the tested pose. The new loader exposes an opt-in `HigherShadowDepthPrecision` setting for the additional-light atlas.
+[ShadowFiltering.slang](slang/ShadowFiltering.slang) samples punctual shadow visibility with a nine-tap tent. The face chooses its toon band from the unoccluded incident light and weights the result by the filtered visibility. The night beach comparison showed that disabling character casting removed the broad contour, and hair alone reproduced it. Hiding the face shadow proxy alone made little difference. The additional-light atlas was 8192 × 4096 D16. D32 softened a secondary contour. Applying visibility after the band made the larger difference in the tested pose. The new loader exposes an opt-in `HigherShadowDepthPrecision` setting for the additional-light atlas.
 
 To reproduce the live painted trial from the normal-bend default, run these commands from the repository root.
 

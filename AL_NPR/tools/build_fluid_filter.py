@@ -2,10 +2,7 @@
 
 import argparse
 from pathlib import Path
-import subprocess
-import tempfile
 
-from build_skin_assets import WORKSPACE
 from build_view_band_trial import build_material_bundle
 from compiled_material_entry import bind_entry, compile_entry
 from patch_skin_light_shoulder import decode_program, emit, encode_program
@@ -42,20 +39,7 @@ def main():
     parser.add_argument("output", type=Path)
     parser.add_argument("--slangc", default="slangc")
     args = parser.parse_args()
-    with tempfile.TemporaryDirectory() as temp:
-        source = Path(temp) / "FluidSample.slang"
-        source.write_text("import FluidMask;\n"
-                          "Texture2D<float4> mask : register(t0);\n"
-                          "SamplerState state : register(s0);\n"
-                          "[shader(\"fragment\")] float4 main(float2 uv : TEXCOORD0) : SV_Target\n"
-                          "{ return sampleFluidMask(mask, state, uv); }\n")
-        hlsl = source.with_suffix(".hlsl")
-        subprocess.run([args.slangc, str(source), "-I", str(WORKSPACE / "AL_NPR/shaders/slang"),
-                        "-entry", "main", "-target", "hlsl", "-profile", "sm_5_0",
-                        "-o", str(hlsl)], check=True)
-        entry = compile_entry(hlsl, "main")
-        if any(t[0] & 2047 in (62, 63) for t in entry[1]):
-            raise ValueError("Fluid sampling must return to the original shader")
+    entry = compile_entry("FluidSample", source="FluidSample.slang", slangc=args.slangc)
     build_material_bundle(args.source, args.output, lambda code, _: patch_body(code, entry), targets=(146,))
 
 
