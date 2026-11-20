@@ -30,7 +30,11 @@
       "_LIGHT_LAYERS",
       "_ADDITIONAL_LIGHT_SHADOWS"
     ],
-    "original": "55da46b220ec8299e6aceda95882e12ec179153ca6c65f640f6ce1a67c3a95f8"
+    "original": "55da46b220ec8299e6aceda95882e12ec179153ca6c65f640f6ce1a67c3a95f8",
+    "stock": {
+      "file": "Face/StockForwardPS.slang",
+      "sha256": "65bc9b7a730b6c94820feed45d7a5785eebc70cde9d06eed5826f0a0b20265ce"
+    }
   },
   "FaceShadowCasterVS": {
     "file": "Face/ShadowCasterVS.slang",
@@ -103,7 +107,11 @@
       "_LIGHT_LAYERS",
       "_ADDITIONAL_LIGHT_SHADOWS"
     ],
-    "original": "641072a0824aad60b2c747904ffd73debb860257c4d0ba49fb3071aaf02ef17b"
+    "original": "641072a0824aad60b2c747904ffd73debb860257c4d0ba49fb3071aaf02ef17b",
+    "stock": {
+      "file": "Body/StockForwardPS.slang",
+      "sha256": "b30e3e343fed07aea392d02b49da920a672848999679974e040e82e2a655d872"
+    }
   },
   "BodyShadowCasterVS": {
     "file": "Body/ShadowCasterVS.slang",
@@ -184,7 +192,11 @@
       "_LIGHT_LAYERS",
       "_ADDITIONAL_LIGHT_SHADOWS"
     ],
-    "original": "b0b3c69671293dc2f7b4c11b5a827c956e08c28770d8bb0babda6e94199552c7"
+    "original": "b0b3c69671293dc2f7b4c11b5a827c956e08c28770d8bb0babda6e94199552c7",
+    "stock": {
+      "file": "Cloth/StockForwardPS.slang",
+      "sha256": "74cedbf066d7251a0c2e72c7d519af93fd11423767969c7331278fd7b88c0aae"
+    }
   },
   "ClothShadowCasterVS": {
     "file": "Cloth/ShadowCasterVS.slang",
@@ -265,7 +277,11 @@
       "_LIGHT_LAYERS",
       "_ADDITIONAL_LIGHT_SHADOWS"
     ],
-    "original": "c4217354d8dda474fc857c310189bb70230cc4ddb272dc5ba35d321ec406ad27"
+    "original": "c4217354d8dda474fc857c310189bb70230cc4ddb272dc5ba35d321ec406ad27",
+    "stock": {
+      "file": "ClothAlpha/StockForwardPS.slang",
+      "sha256": "a7c8f591be538a8595d145a17e5b6eb94ed945b313b2eae0e9c9b5d3b39f10fc"
+    }
   },
   "ClothAlphaShadowCasterVS": {
     "file": "ClothAlpha/ShadowCasterVS.slang",
@@ -312,7 +328,13 @@
       "_MAIN_LIGHT_SHADOWS_CASCADE",
       "_LIGHT_LAYERS"
     ],
-    "original": "fd3b5e11d58984c6edf21332eda2bd499be8568d0d32c0fa65ad7d47c525aee6"
+    "original": "fd3b5e11d58984c6edf21332eda2bd499be8568d0d32c0fa65ad7d47c525aee6",
+    "stock": {
+      "keywords": [
+        "_FORWARD_PLUS",
+        "_SWITCHI1_TANGENT"
+      ]
+    }
   },
   "HairExtraPrePassPS": {
     "file": "Hair/ExtraPrePassPS.slang",
@@ -324,7 +346,15 @@
       "_LIGHT_LAYERS",
       "_ADDITIONAL_LIGHT_SHADOWS"
     ],
-    "original": "8973453286fbcc4f3be7ec2b0bf6e173cfc9ab394560d54ec9e8cd51439ce109"
+    "original": "8973453286fbcc4f3be7ec2b0bf6e173cfc9ab394560d54ec9e8cd51439ce109",
+    "stock": {
+      "file": "Hair/StockExtraPrePassPS.slang",
+      "sha256": "5eae56ad8c98495338c87fade0043e8aecab7d4bb1abf7c44a6109dddcbbdc7c",
+      "keywords": [
+        "_FORWARD_PLUS",
+        "_SWITCHI1_TANGENT"
+      ]
+    }
   },
   "HairForwardVS": {
     "file": "Hair/ExtraPrePassVS.slang",
@@ -347,7 +377,11 @@
       "_LIGHT_LAYERS",
       "_ADDITIONAL_LIGHT_SHADOWS"
     ],
-    "original": "543d52838f068249560b1ddd03d5e3ce57ba3cac769a15788d0654ebce5ec53a"
+    "original": "543d52838f068249560b1ddd03d5e3ce57ba3cac769a15788d0654ebce5ec53a",
+    "stock": {
+      "file": "Hair/StockForwardPS.slang",
+      "sha256": "abe5a7dc8d48fab0af82a67b35348bde936b18aa7b7c4baf22ea8a79940a3f5b"
+    }
   },
   "HairShadowCasterVS": {
     "file": "Face/ShadowCasterVS.slang",

@@ -111,21 +111,40 @@ def write_atomic(path, payload):
         temp.unlink(missing_ok=True)
 
 
+def stock_bundle():
+    targets = {**SKIN, **SURFACES}
+    bundle, asset, originals, _ = copy_stock_shaders(SOURCE, targets, "al-skin-lighting")
+    for path_id, tree in originals.items():
+        if path_id in targets:
+            tree["m_ParsedForm"]["m_Name"] = targets[path_id] + "/Environment"
+        asset.objects[path_id].save_typetree(tree)
+    return bundle, asset, originals
+
+
+def save_bundle(bundle, asset, output):
+    identity = hashlib.sha256()
+    for path_id in MATERIALS:
+        identity.update(asset.objects[path_id].data)
+    bundle.files = {"CAB-" + identity.hexdigest()[:32]: asset}
+    write_atomic(output, bundle.save(packer="lz4"))
+
+
 def build(args):
     manifest = json.loads(MANIFEST.read_text())
-    stock = args.command == "stock-reference" or args.shading == "stock"
+    stock = args.command != "bundle" or args.shading == "stock"
     extract = args.command == "stock-reference"
     if stock and file_sha(SOURCE) != STOCK:
         raise ValueError(f"Expected Amanatsu Location 1.0.4 assets at {SOURCE}")
+    if args.command == "original-bundle":
+        bundle, asset, _ = stock_bundle()
+        save_bundle(bundle, asset, args.output)
+        print(f"{args.output} (original game shaders)")
+        return
+    originals = {}
     if extract:
         asset = load(str(SOURCE)).file
     elif stock:
-        targets = {**SKIN, **SURFACES}
-        bundle, asset, originals, _ = copy_stock_shaders(SOURCE, targets, "al-skin-lighting")
-        for path_id, tree in originals.items():
-            if path_id in targets:
-                tree["m_ParsedForm"]["m_Name"] = targets[path_id] + "/Environment"
-            asset.objects[path_id].save_typetree(tree)
+        bundle, asset, originals = stock_bundle()
     else:
         if not args.base or args.base.resolve() == args.output.resolve():
             raise ValueError("Specify a distinct NPR base bundle")
@@ -135,7 +154,8 @@ def build(args):
     seen = set()
     for path_id, material in MATERIALS.items():
         obj = asset.objects[path_id]
-        tree = obj.read_typetree(check_read=not extract)
+        # UnityPy reads the original stream when an object has pending edits.
+        tree = originals[path_id] if originals else obj.read_typetree(check_read=not extract)
         data, rows = index(tree)
         additions = {}
         for name, slot, digest, variants in manifest_stages(tree, material, manifest, stock):
@@ -159,11 +179,7 @@ def build(args):
     if seen != manifest.keys():
         raise ValueError(f"Missing manifest stages: {sorted(manifest.keys() - seen)}")
     if not extract:
-        identity = hashlib.sha256()
-        for path_id in MATERIALS:
-            identity.update(asset.objects[path_id].data)
-        bundle.files = {"CAB-" + identity.hexdigest()[:32]: asset}
-        write_atomic(args.output, bundle.save(packer="lz4"))
+        save_bundle(bundle, asset, args.output)
     print(f"{args.output} ({len(seen)} stages)")
 
 
@@ -172,6 +188,8 @@ if __name__ == "__main__":
     commands = parser.add_subparsers(dest="command", required=True)
     reference = commands.add_parser("stock-reference")
     reference.add_argument("output", type=Path)
+    original = commands.add_parser("original-bundle")
+    original.add_argument("output", type=Path)
     pack = commands.add_parser("bundle")
     pack.add_argument("output", type=Path)
     pack.add_argument("--programs", type=Path, required=True)

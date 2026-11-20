@@ -24,11 +24,12 @@ The captured `AL/Map` ShadowCaster and DepthOnly pixel shader returns zero and d
 
 With those draw constants and bindings, the Bayer mask is one and sampled alpha exceeds the cutoff by at least 0.45. The alpha-to-coverage calculation's coarse derivative width is at most `2 * (1 - 243/255)`, about 0.094, so the width adjustment also preserves coverage. Eligibility depends on the actual draw having a proven texture and normal filtering, plus those effective values after all material overrides. The static scan establishes the authored map002 inputs. A runtime material or texture override can invalidate the specialization.
 
-Compile `shadow-caster-no-clip.hlsl` with Windows SDK `fxc.exe` and preserve the captured shader signatures with `make_shadow_no_clip.py`.
+Build the opaque control from `MapShadowCaster.slang` and preserve the captured shader signatures with `make_shadow_no_clip.py`.
 
 ```powershell
-fxc /nologo /T ps_5_0 /E main /O3 /Fo artifacts/static/shadow-caster-no-clip-fxc.dxbc AL_Performance/shaders/shadow-caster-no-clip.hlsl
-python AL_Performance/tools/make_shadow_no_clip.py artifacts/bench/rd-map-stock-shaders/10287-ps.dxbc artifacts/static/shadow-caster-no-clip-fxc.dxbc artifacts/static/shadow-caster-no-clip-exact.dxbc
+cmake -S AL_NPR/shaders/slang -B artifacts/static/map-shaders -G Ninja
+cmake --build artifacts/static/map-shaders --target MapShadowOpaque
+python AL_Performance/tools/make_shadow_no_clip.py artifacts/bench/rd-map-stock-shaders/10287-ps.dxbc artifacts/static/map-shaders/MapShadowOpaque.dxbc artifacts/static/shadow-caster-no-clip-exact.dxbc
 ```
 
 The result changes only the executable chunk and container checksum. Its executable emits zero and returns. Use it for RenderDoc replay measurements on event 10287 and compare the raw depth atlas and final output bytes before evaluating timings. Treat the unconditional program as a capture experiment. A live implementation would require proving eligibility for each draw and retaining the original program for draws with other textures or constants.

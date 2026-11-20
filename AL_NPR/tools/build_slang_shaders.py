@@ -15,6 +15,8 @@ def main():
     parser.add_argument("--slangc", help="Slang compiler executable")
     parser.add_argument("--fxc", help="Windows SDK compiler executable for DXBC")
     parser.add_argument("--target", choices=["dxbc", "dxil"], default="dxbc")
+    parser.add_argument("--shading", choices=["npr", "stock"], default="npr")
+    parser.add_argument("--dxil-profile", default="sm_6_0", help="Shader model and optional +capability for DXIL")
     parser.add_argument("--program", action="append", help="Manifest program to build (repeatable)")
     parser.add_argument("--filter-body-oil", action="store_true", help="Use the release's painted body filter")
     args = parser.parse_args()
@@ -25,8 +27,9 @@ def main():
         if name not in programs:
             parser.error(f"Unknown program {name}")
 
-    work = args.output / ".cmake" / args.target
-    options = [f"-DSHADER_TARGET={args.target}",
+    work = args.output / ".cmake" / args.target / args.shading
+    options = [f"-DSHADER_TARGET={args.target}", f"-DSHADING={args.shading}",
+               f"-DDXIL_PROFILE={args.dxil_profile}",
                "-DFILTER_BODY_OIL=" + ("ON" if args.filter_body_oil else "OFF")]
     for variable, executable in [("SLANGC", args.slangc), ("FXC", args.fxc)]:
         if executable:
