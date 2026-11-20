@@ -1,5 +1,7 @@
 # Amanatsu Location plugins
 
+> What would you do with weapon-grade autism?
+
 Download the Windows x64 archives you want from [Releases](https://github.com/lynzrand/al-h-utils/releases). Install BepInEx 6 IL2CPP, run the game once, then exit and extract each archive beside `AmanatsuLocation.exe`. The archives include their `BepInEx` directory layout. The plugins were built against Amanatsu Location 1.0.4, Unity 6000.0.65f1 and BepInEx 6.0.0-be.788.
 
 ## AL H Utils
@@ -10,7 +12,7 @@ Press **Comma** to enter or leave POV, **Period** to switch characters and **Hom
 
 ## AL Scene Lighting
 
-Scene Lighting lets the map’s lights shade characters. Each light contributes a toon band to skin and fabric, hair picks up painted highlights from the light direction, and painted body oil uses a smoother mask for wet highlights.
+Ever wondering why
 
 Extract the archive, then run **Prepare AL Lighting.cmd** once from the game folder before starting the game. It uses 64-bit Python 3.11 to build and verify the shader bundle from your 1.0.4 game files. The lighting loads at startup. Press **F7** in a scene to compare it with the original lighting.
 
