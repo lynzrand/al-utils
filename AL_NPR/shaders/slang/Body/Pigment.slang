@@ -1,4 +1,6 @@
-float3 bodyPigment(float4 base, float4 nipple, float4 underHair, float3 detail)
+import Body.Material;
+
+public float3 bodyPigment(float4 base, float4 nipple, float4 underHair, float3 detail)
 {
     float3 defaultSkin = float3(0.8900055, 0.6118345, 0.5382356);
     float3 pigment = lerp(defaultSkin, base.rgb, base.a);

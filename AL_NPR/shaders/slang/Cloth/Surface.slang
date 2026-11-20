@@ -1,22 +1,20 @@
+import Cloth.Bindings;
+import Cloth.FabricSampling;
+import MaterialNoise;
 import SurfaceNormals;
 
-struct ClothSurface
+public struct ClothSurface
 {
-    float4 fluid;
-    float3 region;
-    float wetness;
-    float3 wetNormalTS;
-    float3 fluidNormalTS;
-    float3 baseNormalTS;
-    float3 normalTS;
+    public float4 fluid;
+    public float3 region;
+    public float wetness;
+    public float3 wetNormalTS;
+    public float3 fluidNormalTS;
+    public float3 baseNormalTS;
+    public float3 normalTS;
 };
 
-float3 blendClothNormals(float3 a, float3 b)
-{
-    return float3(mad(a.xy, b.z, a.z * b.xy), a.z * b.z);
-}
-
-ClothSurface sampleClothSurface(float2 uv)
+public ClothSurface sampleClothSurface(float2 uv)
 {
     ClothSurface surface;
     float2 fluidUV = mad(uv, _FluidTex_ST.xy, _FluidTex_ST.zw);
@@ -35,7 +33,7 @@ ClothSurface sampleClothSurface(float2 uv)
 
     float3 materialNormal = unpackScaledNormal(_Normal_map.Sample(sampler_Normal_map, uv), _BumpMapScale);
     surface.wetNormalTS = unpackScaledNormal(_LiquidBump.Sample(sampler_LiquidBump, liquidUV), 2 * surface.wetness);
-    surface.baseNormalTS = normalize(blendClothNormals(materialNormal, surface.wetNormalTS));
-    surface.normalTS = normalize(blendClothNormals(surface.fluidNormalTS, surface.baseNormalTS));
+    surface.baseNormalTS = normalize(combineNormalSlopes(materialNormal, surface.wetNormalTS));
+    surface.normalTS = normalize(combineNormalSlopes(surface.fluidNormalTS, surface.baseNormalTS));
     return surface;
 }

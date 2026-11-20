@@ -1,3 +1,10 @@
+import Hair.Bindings;
+import Hair.Surface;
+import Hair.Palette;
+import MaterialColor;
+import SurfaceNormals;
+import Reflectance;
+
 // The painted stripe follows both the view in tangent space and the projected view in camera space.
 float3 samplePaintedStripe(float2 uv, HairSurface s)
 {
@@ -17,7 +24,7 @@ float3 samplePaintedStripe(float2 uv, HairSurface s)
     return stripe;
 }
 
-float3 wetHair(float3 pigment, HairSurface s, HairInput input, float keyVisibility)
+public float3 wetHair(float3 pigment, HairSurface s, HairInput input, float keyVisibility)
 {
     float2 uv = input.uv1Uv0.zw;
     float2 regions = saturate((input.positionOS.zy + float2(0.8, 1)) * float2(1.8181818, 1.1428572) - 1);
@@ -49,13 +56,13 @@ float3 wetHair(float3 pigment, HairSurface s, HairInput input, float keyVisibili
     return tintSaturation(saturate(color + strength * direct), 0.8);
 }
 
-struct HairStripe
+public struct HairStripe
 {
-    float primary, intensity;
-    float3 tint, pigment;
+    public float primary, intensity;
+    public float3 tint, pigment;
 };
 
-HairStripe paintStrands(float3 pigment, HairMasks masks, HairSurface s, HairInput input,
+public HairStripe paintStrands(float3 pigment, HairMasks masks, HairSurface s, HairInput input,
                         float keyVisibility, float keyLuma)
 {
     float3 stripe = samplePaintedStripe(input.uv1Uv0.xy, s);
@@ -79,7 +86,7 @@ HairStripe paintStrands(float3 pigment, HairMasks masks, HairSurface s, HairInpu
     return result;
 }
 
-float hairRim(HairSurface s, HairInput input, float3 rimLight, float faceFacing, float fresnel)
+public float hairRim(HairSurface s, HairInput input, float3 rimLight, float faceFacing, float fresnel)
 {
     float3 localLift = input.mainLightOS.xyz * float3(0, 0.3, 0);
     float3 tiltedView = s.view + localLift + rimLight * float3(0.2, -0.2, -0.2);

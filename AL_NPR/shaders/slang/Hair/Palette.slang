@@ -1,24 +1,26 @@
+import Hair.Bindings;
+import Hair.Surface;
 import ToonPalette;
 import MaterialColor;
 
-float sumChannels(float3 c) { return dot(c, float3(1)); }
-float hairLuminance(float3 c) { return dot(c, luminance709); }
-float hairLuma601(float3 c) { return dot(c, luminance601); }
+public float sumChannels(float3 c) { return dot(c, float3(1)); }
+public float hairLuminance(float3 c) { return dot(c, luminance709); }
+public float hairLuma601(float3 c) { return dot(c, luminance601); }
 
-float3 setColorSaturation(float3 color, float saturation)
+public float3 setColorSaturation(float3 color, float saturation)
 {
     float3 hsv = rgbToHSV(color);
     return hsvToRGB(float3(hsv.x, saturation, hsv.z));
 }
 
-struct HairKey
+public struct HairKey
 {
-    float luma, toonVisibility, band, faceFacing, rimFacing, rampFacing;
-    float3 rimLight, probeHighlight, softProbe;
-    PaletteLight palette;
+    public float luma, toonVisibility, band, faceFacing, rimFacing, rampFacing;
+    public float3 rimLight, probeHighlight, softProbe;
+    public PaletteLight palette;
 };
 
-HairKey prepareHairKey(HairSurface s, HairInput input, float visibility)
+public HairKey prepareHairKey(HairSurface s, HairInput input, float visibility)
 {
     HairKey k;
     float3 color = mainLightColor.rgb;
@@ -48,13 +50,13 @@ float3 shadowPigment(HairKey k, float shade)
     return lerp(shadow, _Shadow_color.rgb, _ShadowColorControle);
 }
 
-struct HairToon
+public struct HairToon
 {
-    float3 lit, shadow;
-    float shadowBand, shadowPower, ambientMix, shade;
+    public float3 lit, shadow;
+    public float shadowBand, shadowPower, ambientMix, shade;
 };
 
-HairToon sampleHairRamp(HairSurface s, HairKey k, float shade, float3 extraDiffuse)
+public HairToon sampleHairRamp(HairSurface s, HairKey k, float shade, float3 extraDiffuse)
 {
     HairToon toon;
     toon.shade = shade;

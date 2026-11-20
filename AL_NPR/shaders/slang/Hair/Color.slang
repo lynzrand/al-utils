@@ -1,10 +1,16 @@
 import Coverage;
+import MaterialColor;
+import Reflectance;
+import ToonPalette;
+#ifdef HAIR_NPR
+import HairLighting;
+#endif
 
-#include "Bindings.slang"
-#include "Surface.slang"
-#include "Lights.slang"
-#include "Palette.slang"
-#include "Highlights.slang"
+import Hair.Bindings;
+import Hair.Surface;
+import Hair.Lights;
+import Hair.Palette;
+import Hair.Highlights;
 
 float3 shadeHairPigment(float3 pigment, float rim, HairSurface s, HairKey k, HairToon toon)
 {
@@ -49,8 +55,7 @@ float3 finishHairPalette(float3 pigment, HairStripe stripe, HairSurface s, HairI
 
     float silhouette = saturate(edge * edge * edge * 0.3) * saturate(hairLuma601(pigment) * 0.7 + 0.3);
     float rimGain = litRed * rimMask * silhouette * min(_TestRimSub, _TestRim);
-    rimGain *= max(saturate((saturationOf(pigment) - 0.4) * 3.3333333 + 1),
-                   saturate(1 - (peakChannel(pigment) - 0.1) * 1.4285715));
+    rimGain *= pigmentContrast(pigment);
     float3 base = shadeHairPigment(pigment, rim, s, k, toon);
     float3 bright = base + clamp(k.probeHighlight * ((saturationOf(highlight) * 2.2 + 0.8) * highlight), 0, 99);
     float3 result = rimGain + lerp(base, tintSaturation(bright, 1.5), saturate(3 * specular + rimGain));
@@ -59,7 +64,7 @@ float3 finishHairPalette(float3 pigment, HairStripe stripe, HairSurface s, HairI
     return lerp(clamp(result, 0, 0.98), result, max(stripe.intensity, rim));
 }
 
-float4 shadeHair(HairInput input, bool opaqueBase)
+public float4 shadeHair(HairInput input, bool opaqueBase)
 {
     HairSurface surface = makeHairSurface(input);
     HairLights lights = gatherHairLights(surface, input);

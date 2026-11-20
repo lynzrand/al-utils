@@ -1,10 +1,18 @@
-struct ClothRim
+import Cloth.Bindings;
+import Cloth.LightingFrame;
+import Cloth.Palette;
+import Cloth.Pigment;
+import Cloth.Surface;
+import MaterialColor;
+import Reflectance;
+
+public struct ClothRim
 {
-    float amount, mask, verticalFade, logViewGrazing;
-    float viewRim;
+    public float amount, mask, verticalFade, logViewGrazing;
+    public float viewRim;
 };
 
-ClothRim clothRim(ClothInput input, ClothFrame frame, ClothKey key, ClothPalette palette, ClothPigment pigment)
+public ClothRim clothRim(ClothInput input, ClothFrame frame, ClothKey key, ClothPalette palette, ClothPigment pigment)
 {
     ClothRim rim;
     float3 view = frame.view, normal = frame.normal;
@@ -32,7 +40,7 @@ ClothRim clothRim(ClothInput input, ClothFrame frame, ClothKey key, ClothPalette
     return rim;
 }
 
-float3 fluidPigment(ClothFrame frame, ClothKey key, ClothSurface surface, ClothPigment p)
+public float3 fluidPigment(ClothFrame frame, ClothKey key, ClothSurface surface, ClothPigment p)
 {
     float3 fluid = lerp(surface.fluid.rgb, p.wet, _FluidTransmittance);
     float3 hsv = rgbToHSV(fluid);

@@ -1,3 +1,6 @@
+import Face.Bindings;
+import Face.Material;
+
 // The cheek artwork uses different travel and pivot settings for its red
 // pigment channel and blue highlight channel. Both rotate about UV (0.5, 0.5).
 float2 cheekUV(float2 uv, float4 placement, float size, float2 translation,
@@ -12,17 +15,17 @@ float2 cheekUV(float2 uv, float4 placement, float size, float2 translation,
     return float2(dot(p, float2(cosine, sine)), dot(p, float2(-sine, cosine))) + 0.5;
 }
 
-struct FaceMakeup
+public struct FaceMakeup
 {
-    float3 pigment;
-    float3 basePigment;
-    float4 nose;
-    float4 spot;
-    float lipHighlight;
-    float cheekHighlight;
+    public float3 pigment;
+    public float3 basePigment;
+    public float4 nose;
+    public float4 spot;
+    public float lipHighlight;
+    public float cheekHighlight;
 }
 
-FaceMakeup sampleFaceMakeup(StageInput input)
+public FaceMakeup sampleFaceMakeup(StageInput input)
 {
     float2 uv = input.uv0Uv1.xy;
 #if SKIN_PREPASS

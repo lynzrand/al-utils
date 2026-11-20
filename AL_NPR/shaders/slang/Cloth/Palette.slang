@@ -1,12 +1,19 @@
-struct ClothPalette
+import Cloth.Bindings;
+import Cloth.LightGather;
+import Cloth.LightingFrame;
+import Cloth.Pigment;
+import MaterialColor;
+import ToonPalette;
+
+public struct ClothPalette
 {
-    float3 tint, shadow, ambient, rimLight;
-    float baseMix, ambientWeight, ramp, lightFacing, viewGrazing, highlight;
-    float3 rimDirection, hdrBoost;
-    float specMask;
+    public float3 tint, shadow, ambient, rimLight;
+    public float baseMix, ambientWeight, ramp, lightFacing, viewGrazing, highlight;
+    public float3 rimDirection, hdrBoost;
+    public float specMask;
 };
 
-ClothPalette clothPalette(ClothFrame frame, ClothKey key, ClothPigment p, ClothLights lights)
+public ClothPalette clothPalette(ClothFrame frame, ClothKey key, ClothPigment p, ClothLights lights)
 {
     ClothPalette palette;
     float facingView = dot(frame.normal, frame.view);

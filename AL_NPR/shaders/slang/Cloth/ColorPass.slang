@@ -1,44 +1,13 @@
-import AmbientProbe;
-import Coverage;
-import ForwardPlus;
-import MaterialNoise;
-import PunctualLighting;
-#ifndef CLOTH_PREPASS
-import PunctualShadows;
-#endif
-#ifdef CLOTH_NPR
-import MapLighting;
-import SceneLighting;
-#endif
-
-#include "ColorBindings.slang"
-
-struct ClothInput
-{
-    float4 positionCS : SV_Position;
-    float4 positionWS : TEXCOORD0;
-    float3 normalWS : TEXCOORD1;
-    float4 tangentWS : TEXCOORD2;
-    // These slots keep the input registers aligned with the game vertex signature.
-    float4 unused3 : TEXCOORD3;
-    float4 unused4 : TEXCOORD4;
-    float4 uv : TEXCOORD5;
-    float4 maskUV : TEXCOORD6;
-    float4 positionOS : TEXCOORD7;
-    float4 lightOS : TEXCOORD8;
-    float3 normalOS : NORMAL0;
-    bool frontFace : SV_IsFrontFace;
-};
-
-#include "FabricSampling.slang"
-#include "Surface.slang"
-#include "LightGather.slang"
-#include "LightingFrame.slang"
-#include "Pigment.slang"
-#include "ColorOpacity.slang"
-#include "Palette.slang"
-#include "Highlights.slang"
-#include "ColorComposition.slang"
+import Cloth.Bindings;
+import Cloth.ColorComposition;
+import Cloth.ColorOpacity;
+import Cloth.Highlights;
+import Cloth.LightGather;
+import Cloth.LightingFrame;
+import Cloth.Palette;
+import Cloth.Pigment;
+import Cloth.Surface;
+import MaterialColor;
 
 [shader("fragment")]
 float4 main(ClothInput input) : SV_Target0

@@ -1,38 +1,44 @@
 import FluidMask;
 import MaterialNoise;
 
-#ifndef FILTER_BODY_OIL
-#define FILTER_BODY_OIL 0
-#endif
-
-struct FluidLayer
+public struct FluidLayer
 {
-    float4 paint;
-    float3 normalTS;
+    public float4 paint;
+    public float3 normalTS;
 }
 
-float4 readFluidPaint(float2 uv)
-{
-#if FILTER_BODY_OIL && SKIN_NPR && !SKIN_FACE
-    return sampleFluidMask(_FluidTex, sampler_FluidTex, uv);
-#else
-    return _FluidTex.Sample(sampler_FluidTex, uv);
-#endif
-}
+public enum FluidFilter { Linear, Cubic }
 
-FluidLayer sampleFluidLayer(float2 materialUV)
+public struct FluidMap<let filter : FluidFilter>
 {
-    float2 uv = mad(materialUV, _FluidTex_ST.xy, _FluidTex_ST.zw);
-    float2 noise = float2(fluidNoise(uv * _Fluid_Noise_Scale),
-                          fluidNoise((uv + float2(12, 34)) * _Fluid_Noise_Scale));
-    float2 offset = (noise - 0.5) * _Fluid_Noise_Amount;
-    uv = mad(offset, _FluidTex_TexelSize.xy, uv);
+    public Texture2D<float4> paintMap;
+    public SamplerState paintSampler;
+    public float4 scaleOffset;
+    public float2 texelSize;
+    public float noiseScale;
+    public float noiseAmount;
+    public float normalScale;
 
-    FluidLayer layer;
-    layer.paint = readFluidPaint(uv);
-    float heightX = readFluidPaint(uv + float2(_FluidTex_TexelSize.x, 0)).a;
-    float heightY = readFluidPaint(uv + float2(0, _FluidTex_TexelSize.y)).a;
-    float2 gradient = (layer.paint.a - float2(heightX, heightY)) * _FluidNormalScale;
-    layer.normalTS = normalize(float3(gradient, 1));
-    return layer;
+    float4 readPaint(float2 uv)
+    {
+        if (filter == FluidFilter.Cubic)
+            return sampleFluidMask(paintMap, paintSampler, uv);
+        return paintMap.Sample(paintSampler, uv);
+    }
+
+    public FluidLayer sampleLayer(float2 materialUV)
+    {
+        float2 uv = mad(materialUV, scaleOffset.xy, scaleOffset.zw);
+        float2 noise = float2(fluidNoise(uv * noiseScale),
+                              fluidNoise((uv + float2(12, 34)) * noiseScale));
+        uv = mad((noise - 0.5) * noiseAmount, texelSize, uv);
+
+        FluidLayer layer;
+        layer.paint = readPaint(uv);
+        float heightX = readPaint(uv + float2(texelSize.x, 0)).a;
+        float heightY = readPaint(uv + float2(0, texelSize.y)).a;
+        float2 gradient = (layer.paint.a - float2(heightX, heightY)) * normalScale;
+        layer.normalTS = normalize(float3(gradient, 1));
+        return layer;
+    }
 }

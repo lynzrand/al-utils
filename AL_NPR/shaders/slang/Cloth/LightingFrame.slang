@@ -1,29 +1,33 @@
-import ToonPalette;
-import SurfaceNormals;
+import Cloth.Bindings;
+import Cloth.LightGather;
 import MaterialColor;
+import SurfaceNormals;
+import ToonPalette;
+#ifndef CLOTH_PREPASS
+import PunctualShadows;
+#endif
 
-float3 sampleReflection(float3 direction, float lod)
+public float3 sampleReflection(float3 direction, float lod)
 {
     float4 encoded = unity_SpecCube0.SampleLevel(samplerunity_SpecCube0, direction, lod);
     return decodeProbe(encoded, specCubeDecode);
 }
 
-float3 viewAxes(float3 world)
+public float3 viewAxes(float3 world)
 {
     return mad(viewZ.xyz, world.z, mad(viewX.xyz, world.x, viewY.xyz * world.y));
 }
 
-struct ClothFrame
+public struct ClothFrame
 {
-    float3 positionWS;
-    float3 normal;
-    float3 normalBeforeNormalize;
-    TangentFrame basis;
-    float3 cameraDelta, view;
-
+    public float3 positionWS;
+    public float3 normal;
+    public float3 normalBeforeNormalize;
+    public TangentFrame basis;
+    public float3 cameraDelta, view;
 };
 
-ClothFrame clothFrame(ClothInput input, float3 mappedNormal)
+public ClothFrame clothFrame(ClothInput input, float3 mappedNormal)
 {
     ClothFrame frame;
     frame.positionWS = input.positionWS.xyz;
@@ -35,17 +39,17 @@ ClothFrame clothFrame(ClothInput input, float3 mappedNormal)
     return frame;
 }
 
-struct ClothKey
+public struct ClothKey
 {
-    float3 color, direction, viewHalf, litColor;
-    PaletteDirections directions;
-    PaletteLight palette;
-    float visibility, shade;
-    float2 bands;
-    float3 ambient;
+    public float3 color, direction, viewHalf, litColor;
+    public PaletteDirections directions;
+    public PaletteLight palette;
+    public float visibility, shade;
+    public float2 bands;
+    public float3 ambient;
 };
 
-ClothKey clothKey(ClothFrame frame, ClothLights lights, bool frontFace)
+public ClothKey clothKey(ClothFrame frame, ClothLights lights, bool frontFace)
 {
     ClothKey key;
 #ifdef CLOTH_NPR

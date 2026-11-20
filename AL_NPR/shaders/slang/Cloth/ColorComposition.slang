@@ -1,3 +1,13 @@
+import Cloth.Bindings;
+import Cloth.Highlights;
+import Cloth.LightGather;
+import Cloth.LightingFrame;
+import Cloth.Palette;
+import Cloth.Pigment;
+import MaterialColor;
+import SceneLighting;
+import ToonPalette;
+
 float3 applyClothOverlay(float3 base, float3 tint, float strength)
 {
     float3 overlay = select(tint > 0.5, base + tint * 2 - 1, base + (tint - 0.5) * 2);
@@ -21,7 +31,7 @@ float3 scatterCloth(ClothFrame frame, ClothKey key, ClothPalette palette, float3
     return saturate(((key.visibility * facing) * transmitted) * brightness * _TestSSS);
 }
 
-float3 shadeClothPigment(ClothFrame frame, ClothKey key, ClothPalette palette, ClothRim rim,
+public float3 shadeClothPigment(ClothFrame frame, ClothKey key, ClothPalette palette, ClothRim rim,
                          float3 pigment, out float contrast)
 {
     float3 probeTint = saturate(tintSaturation(mad(probe.evaluate(0.3 * frame.normal), 0.7, 0.3), 2));
@@ -43,7 +53,7 @@ float3 shadeClothPigment(ClothFrame frame, ClothKey key, ClothPalette palette, C
     return base;
 }
 
-float3 addClothHighlights(float3 base, float pigmentContrast, float3 pigment, float highlight,
+public float3 addClothHighlights(float3 base, float pigmentContrast, float3 pigment, float highlight,
                           ClothFrame frame, ClothKey key, ClothPalette palette, ClothRim rim, bool frontFace)
 {
     float facingLight = saturate(key.visibility * key.color.r);
@@ -63,7 +73,7 @@ float3 addClothHighlights(float3 base, float pigmentContrast, float3 pigment, fl
     return lerp(clamp(color, 0, 0.98), color, max(rim.amount, highlight));
 }
 
-float3 addClothLights(float3 color, float3 pigment, ClothFrame frame, ClothKey key,
+public float3 addClothLights(float3 color, float3 pigment, ClothFrame frame, ClothKey key,
                       ClothPalette palette, ClothLights lights)
 {
 
@@ -83,7 +93,7 @@ float3 addClothLights(float3 color, float3 pigment, ClothFrame frame, ClothKey k
     return color;
 }
 
-float3 clothLineColor(float3 color, ClothPigment p, ClothKey key, ClothLights lights,
+public float3 clothLineColor(float3 color, ClothPigment p, ClothKey key, ClothLights lights,
                       ClothFrame frame, bool frontFace)
 {
     float3 line = lerp(color, _Line_color.rgb, mad(_Line_power, 0.8, 0.2));

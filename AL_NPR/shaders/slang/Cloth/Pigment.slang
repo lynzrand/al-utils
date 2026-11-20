@@ -1,9 +1,17 @@
-struct ClothPigment
+import Cloth.Bindings;
+import Cloth.FabricSampling;
+import Cloth.LightingFrame;
+import Cloth.Surface;
+import MaterialColor;
+import Reflectance;
+import SurfaceNormals;
+
+public struct ClothPigment
 {
-    float3 dry, wetTint, wet, specular;
-    float4 detail;
-    float4 base;
-    float lineDetail, wetBlend, sheer;
+    public float3 dry, wetTint, wet, specular;
+    public float4 detail;
+    public float4 base;
+    public float lineDetail, wetBlend, sheer;
 };
 
 float4 matcapRegions(float3 mask, float overrideAmount)
@@ -57,7 +65,7 @@ float3 wetSheen(ClothInput input, ClothFrame frame, ClothSurface surface, ClothK
     float3 sheer = normalize(float3((height - detail) * _SukeNormalPower, 1));
     sheerStrength = sheerAmount(surface.region, detail);
     sheer = lerp(flat, normalize(lerp(flat, sheer, sheerStrength)), _sukeONOFF);
-    float3 normalWS = frame.basis.toWorld(normalize(blendClothNormals(baseNormal, sheer)));
+    float3 normalWS = frame.basis.toWorld(normalize(combineNormalSlopes(baseNormal, sheer)));
 
     float3 reflection = saturate(0.3 * sampleReflection(reflect(-frame.view, normalWS), 4.05));
     float3 reflectedTint = saturate(lerp(tint, tint * reflection, 0.5));
@@ -69,7 +77,7 @@ float3 wetSheen(ClothInput input, ClothFrame frame, ClothSurface surface, ClothK
     return saturate(mad(sheen, wetArea, base));
 }
 
-ClothPigment clothPigment(ClothInput input, ClothFrame frame, ClothSurface surface, ClothKey key)
+public ClothPigment clothPigment(ClothInput input, ClothFrame frame, ClothSurface surface, ClothKey key)
 {
     ClothPigment p;
     float2 uv = input.uv.xy;

@@ -1,14 +1,24 @@
+import Cloth.Bindings;
+import ForwardPlus;
+import PunctualLighting;
 import Reflectance;
-
-struct ClothLights
-{
-    float3 diffuse;
-    float3 wrapped;
-    float3 unshaded;
+#ifndef CLOTH_PREPASS
+import PunctualShadows;
+#endif
 #ifdef CLOTH_NPR
-    float3 bandColor;
-    float3 bandDirection;
-    float band;
+import MapLighting;
+import SceneLighting;
+#endif
+
+public struct ClothLights
+{
+    public float3 diffuse;
+    public float3 wrapped;
+    public float3 unshaded;
+#ifdef CLOTH_NPR
+    public float3 bandColor;
+    public float3 bandDirection;
+    public float band;
 #endif
 };
 
@@ -50,7 +60,7 @@ void addClothLight(inout ClothLights lights, uint index, float3 positionWS, floa
 #endif
 }
 
-ClothLights gatherClothLights(float3 positionWS, float3 normalWS, float2 screenUV)
+public ClothLights gatherClothLights(float3 positionWS, float3 normalWS, float2 screenUV)
 {
     ForwardPlusGrid grid = ForwardPlusGrid(_FPParams0, _FPParams1, _FPParams2.x);
     float3 fromCamera = positionWS - _WorldSpaceCameraPos.xyz;

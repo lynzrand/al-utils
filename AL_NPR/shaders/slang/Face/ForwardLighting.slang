@@ -1,22 +1,29 @@
+import Face.Bindings;
+import Face.Material;
+import Face.ForwardSurface;
+import Skin.Frame;
+import Skin.Lighting;
+import Reflectance;
+import MaterialColor;
 import ToonPalette;
 
-struct FaceKey
+public struct FaceKey
 {
-    float3 color;
-    float3 direction;
-    float3 diffuseDirection;
-    float3 rampDirection;
-    float3 rimDirection;
-    PaletteLight palette;
-    float visibility;
-    float toonVisibility;
-    float facing;
-    float rampFacing;
-    float diffuseWeight;
-    float2 wrap;
+    public float3 color;
+    public float3 direction;
+    public float3 diffuseDirection;
+    public float3 rampDirection;
+    public float3 rimDirection;
+    public PaletteLight palette;
+    public float visibility;
+    public float toonVisibility;
+    public float facing;
+    public float rampFacing;
+    public float diffuseWeight;
+    public float2 wrap;
 }
 
-FaceKey faceKey(StageInput input, FaceSurface s)
+public FaceKey faceKey(StageInput input, FaceSurface s)
 {
     FaceKey key;
     key.color = skinKeyColor();
@@ -38,13 +45,13 @@ FaceKey faceKey(StageInput input, FaceSurface s)
     return key;
 }
 
-struct FaceRim
+public struct FaceRim
 {
-    float outer;
-    float secondary;
+    public float outer;
+    public float secondary;
 }
 
-FaceRim faceRim(StageInput input, FaceSurface s, FaceKey k)
+public FaceRim faceRim(StageInput input, FaceSurface s, FaceKey k)
 {
     float3 offset = abs(s.eyeOffset) - input.normalOS;
     float falloff = clamp(mad(saturate(offset.y / length(offset)) - 0.25, 4, 1), 1, 3) * 8;
@@ -71,7 +78,7 @@ FaceRim faceRim(StageInput input, FaceSurface s, FaceKey k)
     return result;
 }
 
-float3 faceSubsurface(FaceSurface s, FaceKey k)
+public float3 faceSubsurface(FaceSurface s, FaceKey k)
 {
     float3 key = max(k.color, 0);
     float3 transmission = mad(log2(min(key, 3)), 0.30103, min(key, 1));
@@ -116,15 +123,15 @@ float3 faceMatcap(FaceSurface s, FaceRim rim, float chromaMask, float shadeMask,
     hsv.y = min(saturationOf(occluded) + 0.1, max(hsv.y, 0));
     return hsvToRGB(hsv);
 }
-struct FacePalette
+public struct FacePalette
 {
-    float3 color;
-    float3 ambient;
-    float3 bounce;
-    float chromaMask;
+    public float3 color;
+    public float3 ambient;
+    public float3 bounce;
+    public float chromaMask;
 }
 
-FacePalette facePalette(FaceSurface s, FaceKey k, FaceRim rim, SkinLights lights, float gloss)
+public FacePalette facePalette(FaceSurface s, FaceKey k, FaceRim rim, SkinLights lights, float gloss)
 {
     float chromaMask = pigmentContrast(s.pigment);
     float edge = max(1 - dot(s.normal, s.view), 0.0001);

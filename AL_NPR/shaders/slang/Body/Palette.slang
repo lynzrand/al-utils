@@ -1,3 +1,13 @@
+import Body.Bindings;
+import Body.Material;
+import Body.Surface;
+import Body.Highlights;
+import Skin.Frame;
+import Skin.Lighting;
+import MaterialColor;
+import Reflectance;
+import ToonPalette;
+
 struct BodyPalette
 {
     float3 lighting, baseShadow, shadowColor, ambient;
@@ -68,7 +78,7 @@ float3 matcapPigment(BodySurface s, BodyPalette p, BodyRim rim, float contrast)
     return saturate(mad(p.lighting, hsvToRGB(hsv), p.ambient * p.ambientMix));
 }
 
-float3 illuminateBody(BodySurface s, BodyKey k, BodyShade shade, SkinLights lights, StageInput input)
+public float3 illuminateBody(BodySurface s, BodyKey k, BodyShade shade, SkinLights lights, StageInput input)
 {
     BodyRim rim = bodyRim(s, k, shade, input);
     BodyPalette palette = sampleBodyPalette(s, k, shade, lights);

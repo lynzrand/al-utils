@@ -9,7 +9,12 @@
     "file": "Face/ExtraPrePassPS.slang",
     "stage": "fragment",
     "keywords": [],
-    "original": "f22ddb89205c3dd0f237cb4fffa1c6adb5cd8df204fb43d8ea72e65b6c738157"
+    "original": "f22ddb89205c3dd0f237cb4fffa1c6adb5cd8df204fb43d8ea72e65b6c738157",
+    "defines": [
+      "SKIN_FACE=1",
+      "SKIN_NPR=0",
+      "SKIN_PREPASS=1"
+    ]
   },
   "FaceForwardVS": {
     "file": "Face/ForwardVS.slang",
@@ -32,9 +37,18 @@
     ],
     "original": "55da46b220ec8299e6aceda95882e12ec179153ca6c65f640f6ce1a67c3a95f8",
     "stock": {
-      "file": "Face/StockForwardPS.slang",
-      "sha256": "65bc9b7a730b6c94820feed45d7a5785eebc70cde9d06eed5826f0a0b20265ce"
-    }
+      "sha256": "65bc9b7a730b6c94820feed45d7a5785eebc70cde9d06eed5826f0a0b20265ce",
+      "defines": [
+        "SKIN_FACE=1",
+        "SKIN_NPR=0",
+        "SKIN_PREPASS=0"
+      ]
+    },
+    "defines": [
+      "SKIN_FACE=1",
+      "SKIN_NPR=1",
+      "SKIN_PREPASS=0"
+    ]
   },
   "FaceShadowCasterVS": {
     "file": "Face/ShadowCasterVS.slang",
@@ -86,7 +100,12 @@
     "keywords": [
       "_FORWARD_PLUS"
     ],
-    "original": "f5ce61ecb7ec218262883bb364395f2b398b15775891d1dfcdf564e500ee8f72"
+    "original": "f5ce61ecb7ec218262883bb364395f2b398b15775891d1dfcdf564e500ee8f72",
+    "defines": [
+      "SKIN_FACE=0",
+      "SKIN_NPR=0",
+      "SKIN_PREPASS=1"
+    ]
   },
   "BodyForwardVS": {
     "file": "Body/ForwardVS.slang",
@@ -109,9 +128,18 @@
     ],
     "original": "641072a0824aad60b2c747904ffd73debb860257c4d0ba49fb3071aaf02ef17b",
     "stock": {
-      "file": "Body/StockForwardPS.slang",
-      "sha256": "b30e3e343fed07aea392d02b49da920a672848999679974e040e82e2a655d872"
-    }
+      "sha256": "b30e3e343fed07aea392d02b49da920a672848999679974e040e82e2a655d872",
+      "defines": [
+        "SKIN_FACE=0",
+        "SKIN_NPR=0",
+        "SKIN_PREPASS=0"
+      ]
+    },
+    "defines": [
+      "SKIN_FACE=0",
+      "SKIN_NPR=1",
+      "SKIN_PREPASS=0"
+    ]
   },
   "BodyShadowCasterVS": {
     "file": "Body/ShadowCasterVS.slang",
@@ -160,14 +188,17 @@
     "original": "31923ad847efd3df3a4b2c3d29a6e97cff81abfc7a402b3e0f23543a3f505399"
   },
   "ClothExtraPrePassPS": {
-    "file": "Cloth/ExtraPrePassPS.slang",
+    "file": "Cloth/ColorPass.slang",
     "stage": "fragment",
     "keywords": [
       "_FORWARD_PLUS",
       "_BACKFACEBLEND_NONE",
       "_EMISSIONTYPE_NONE"
     ],
-    "original": "d28c3a1da773372d27b9e611a8330355ba45f958aef37fb43f707ef8d94cf786"
+    "original": "d28c3a1da773372d27b9e611a8330355ba45f958aef37fb43f707ef8d94cf786",
+    "defines": [
+      "CLOTH_PREPASS=1"
+    ]
   },
   "ClothForwardVS": {
     "file": "Cloth/ForwardVS.slang",
@@ -182,7 +213,7 @@
     "original": "cc7406c47c2c60a7141b3dcec8dc295112a63ce03523a567d103087a958bd7cf"
   },
   "ClothForwardPS": {
-    "file": "Cloth/ForwardPS.slang",
+    "file": "Cloth/ColorPass.slang",
     "stage": "fragment",
     "keywords": [
       "_FORWARD_PLUS",
@@ -194,9 +225,12 @@
     ],
     "original": "b0b3c69671293dc2f7b4c11b5a827c956e08c28770d8bb0babda6e94199552c7",
     "stock": {
-      "file": "Cloth/StockForwardPS.slang",
-      "sha256": "74cedbf066d7251a0c2e72c7d519af93fd11423767969c7331278fd7b88c0aae"
-    }
+      "sha256": "74cedbf066d7251a0c2e72c7d519af93fd11423767969c7331278fd7b88c0aae",
+      "defines": []
+    },
+    "defines": [
+      "CLOTH_NPR=1"
+    ]
   },
   "ClothShadowCasterVS": {
     "file": "Cloth/ShadowCasterVS.slang",
@@ -205,10 +239,13 @@
     "original": "848c4c9c925df159c79854f382327da942826430e86102acb8fe2ac0cd281410"
   },
   "ClothShadowCasterPS": {
-    "file": "Cloth/ShadowCasterPS.slang",
+    "file": "Cloth/DepthOnlyPS.slang",
     "stage": "fragment",
     "keywords": [],
-    "original": "38cef9cc7dfd2ace84ed7d65e61be842de59b01438af9257ead730c4f20d90e0"
+    "original": "38cef9cc7dfd2ace84ed7d65e61be842de59b01438af9257ead730c4f20d90e0",
+    "defines": [
+      "CLOTH_DEPTH_PASS=1"
+    ]
   },
   "ClothDepthOnlyVS": {
     "file": "Cloth/DepthOnlyVS.slang",
@@ -217,10 +254,13 @@
     "original": "bef664603c0ebaf912981d3ab60f463a183af45953c4aed50e81d8aec5a48015"
   },
   "ClothDepthOnlyPS": {
-    "file": "Cloth/ShadowCasterPS.slang",
+    "file": "Cloth/DepthOnlyPS.slang",
     "stage": "fragment",
     "keywords": [],
-    "original": "38cef9cc7dfd2ace84ed7d65e61be842de59b01438af9257ead730c4f20d90e0"
+    "original": "38cef9cc7dfd2ace84ed7d65e61be842de59b01438af9257ead730c4f20d90e0",
+    "defines": [
+      "CLOTH_DEPTH_PASS=1"
+    ]
   },
   "ClothDepthNormalsVS": {
     "file": "Cloth/DepthNormalsVS.slang",
@@ -232,7 +272,10 @@
     "file": "Cloth/DepthNormalsPS.slang",
     "stage": "fragment",
     "keywords": [],
-    "original": "c73deabb02b328c696bc66a259f86b6f8192090f95fa645cbb55073247d0de8b"
+    "original": "c73deabb02b328c696bc66a259f86b6f8192090f95fa645cbb55073247d0de8b",
+    "defines": [
+      "CLOTH_DEPTH_PASS=1"
+    ]
   },
   "ClothAlphaExtraPrePassVS": {
     "file": "ClothAlpha/ExtraPrePassVS.slang",
@@ -245,14 +288,18 @@
     "original": "7b0f32fff59ee1e50a241989d490563634ce19d6a16b842b06e2b426cf85f3ea"
   },
   "ClothAlphaExtraPrePassPS": {
-    "file": "ClothAlpha/ExtraPrePassPS.slang",
+    "file": "Cloth/ColorPass.slang",
     "stage": "fragment",
     "keywords": [
       "_FORWARD_PLUS",
       "_BACKFACEBLEND_NONE",
       "_EMISSIONTYPE_NONE"
     ],
-    "original": "6dc8db653deec2a18488d55ae57018f6a704b24dc7daf3712199fea5fb401bab"
+    "original": "6dc8db653deec2a18488d55ae57018f6a704b24dc7daf3712199fea5fb401bab",
+    "defines": [
+      "CLOTH_CUTOUT_LAYOUT=1",
+      "CLOTH_PREPASS=1"
+    ]
   },
   "ClothAlphaForwardVS": {
     "file": "ClothAlpha/ForwardVS.slang",
@@ -267,7 +314,7 @@
     "original": "81984da12a27be6716a43fa23529dfa41433672508bc0c70df5c6c9984d2b2a8"
   },
   "ClothAlphaForwardPS": {
-    "file": "ClothAlpha/ForwardPS.slang",
+    "file": "Cloth/ColorPass.slang",
     "stage": "fragment",
     "keywords": [
       "_FORWARD_PLUS",
@@ -279,9 +326,15 @@
     ],
     "original": "c4217354d8dda474fc857c310189bb70230cc4ddb272dc5ba35d321ec406ad27",
     "stock": {
-      "file": "ClothAlpha/StockForwardPS.slang",
-      "sha256": "a7c8f591be538a8595d145a17e5b6eb94ed945b313b2eae0e9c9b5d3b39f10fc"
-    }
+      "sha256": "a7c8f591be538a8595d145a17e5b6eb94ed945b313b2eae0e9c9b5d3b39f10fc",
+      "defines": [
+        "CLOTH_CUTOUT_LAYOUT=1"
+      ]
+    },
+    "defines": [
+      "CLOTH_CUTOUT_LAYOUT=1",
+      "CLOTH_NPR=1"
+    ]
   },
   "ClothAlphaShadowCasterVS": {
     "file": "ClothAlpha/ShadowCasterVS.slang",
@@ -290,10 +343,14 @@
     "original": "3902ca4330bff97839a522c86b487499fc27254023776ee8fcc3022945b35a90"
   },
   "ClothAlphaShadowCasterPS": {
-    "file": "ClothAlpha/ShadowCasterPS.slang",
+    "file": "Cloth/ShadowCasterPS.slang",
     "stage": "fragment",
     "keywords": [],
-    "original": "b59ca8a621813b3aad3551461fe61dd5af0ee1bf51fe8d0b8215f9cc692e1095"
+    "original": "b59ca8a621813b3aad3551461fe61dd5af0ee1bf51fe8d0b8215f9cc692e1095",
+    "defines": [
+      "CLOTH_CUTOUT_LAYOUT=1",
+      "CLOTH_DEPTH_PASS=1"
+    ]
   },
   "ClothAlphaDepthOnlyVS": {
     "file": "ClothAlpha/DepthOnlyVS.slang",
@@ -302,10 +359,14 @@
     "original": "c89fba97cabb434ba6b3415097f12fdd80a34e7485d8a05608c012b676f704ca"
   },
   "ClothAlphaDepthOnlyPS": {
-    "file": "ClothAlpha/DepthOnlyPS.slang",
+    "file": "Cloth/DepthOnlyPS.slang",
     "stage": "fragment",
     "keywords": [],
-    "original": "37678e1b07c752ccb285ec03160343191c9c82d48397e57632ab66be5a33c065"
+    "original": "37678e1b07c752ccb285ec03160343191c9c82d48397e57632ab66be5a33c065",
+    "defines": [
+      "CLOTH_CUTOUT_LAYOUT=1",
+      "CLOTH_DEPTH_PASS=1"
+    ]
   },
   "ClothAlphaDepthNormalsVS": {
     "file": "ClothAlpha/DepthNormalsVS.slang",
@@ -314,10 +375,14 @@
     "original": "82cd637c3adf4cc1c73e1b259d4a6adb23f1fa391f040385da1f7538ae29996c"
   },
   "ClothAlphaDepthNormalsPS": {
-    "file": "ClothAlpha/DepthNormalsPS.slang",
+    "file": "Cloth/DepthNormalsPS.slang",
     "stage": "fragment",
     "keywords": [],
-    "original": "65575eeb4d5ddcb1c14af34e439097eee9acc29e35884ed55670fb2ce124ba14"
+    "original": "65575eeb4d5ddcb1c14af34e439097eee9acc29e35884ed55670fb2ce124ba14",
+    "defines": [
+      "CLOTH_CUTOUT_LAYOUT=1",
+      "CLOTH_DEPTH_PASS=1"
+    ]
   },
   "HairExtraPrePassVS": {
     "file": "Hair/ExtraPrePassVS.slang",
@@ -348,13 +413,18 @@
     ],
     "original": "8973453286fbcc4f3be7ec2b0bf6e173cfc9ab394560d54ec9e8cd51439ce109",
     "stock": {
-      "file": "Hair/StockExtraPrePassPS.slang",
       "sha256": "5eae56ad8c98495338c87fade0043e8aecab7d4bb1abf7c44a6109dddcbbdc7c",
       "keywords": [
         "_FORWARD_PLUS",
         "_SWITCHI1_TANGENT"
+      ],
+      "defines": [
+        "HAIR_STOCK_BASE=1"
       ]
-    }
+    },
+    "defines": [
+      "HAIR_NPR=1"
+    ]
   },
   "HairForwardVS": {
     "file": "Hair/ExtraPrePassVS.slang",
@@ -379,9 +449,12 @@
     ],
     "original": "543d52838f068249560b1ddd03d5e3ce57ba3cac769a15788d0654ebce5ec53a",
     "stock": {
-      "file": "Hair/StockForwardPS.slang",
-      "sha256": "abe5a7dc8d48fab0af82a67b35348bde936b18aa7b7c4baf22ea8a79940a3f5b"
-    }
+      "sha256": "abe5a7dc8d48fab0af82a67b35348bde936b18aa7b7c4baf22ea8a79940a3f5b",
+      "defines": []
+    },
+    "defines": [
+      "HAIR_NPR=1"
+    ]
   },
   "HairShadowCasterVS": {
     "file": "Face/ShadowCasterVS.slang",

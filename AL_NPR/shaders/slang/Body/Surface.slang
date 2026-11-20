@@ -1,17 +1,32 @@
+import Body.Bindings;
+import Body.Material;
+import Body.Pigment;
+import Skin.Frame;
+import Skin.Lighting;
+import Skin.FluidLayer;
+import Skin.FluidBindings;
 import SurfaceNormals;
 import Skin.SurfaceMath;
-#include "../Skin/FluidPigment.slang"
 import MaterialColor;
 import Reflectance;
 
-struct BodySurface
+#ifndef FILTER_BODY_OIL
+#define FILTER_BODY_OIL 0
+#endif
+#if FILTER_BODY_OIL && SKIN_NPR && !SKIN_PREPASS
+static const FluidFilter bodyFluidFilter = FluidFilter.Cubic;
+#else
+static const FluidFilter bodyFluidFilter = FluidFilter.Linear;
+#endif
+
+public struct BodySurface
 {
-    TangentFrame basis;
-    float3 view, key, cameraOffset;
-    float3 normalWS, unitNormal, artisticNormal, dryNormal;
-    float3 substrate, pigment, paintedPigment, beadReflection;
-    float4 detail, regions;
-    float bustMask, flatten, liquid, hairAlpha, nippleMask, dent, lineMask;
+    public TangentFrame basis;
+    public float3 view, key, cameraOffset;
+    public float3 normalWS, unitNormal, artisticNormal, dryNormal;
+    public float3 substrate, pigment, paintedPigment, beadReflection;
+    public float4 detail, regions;
+    public float bustMask, flatten, liquid, hairAlpha, nippleMask, dent, lineMask;
 };
 
 float4 sampleExtra(float2 uv, float slice)
@@ -24,13 +39,13 @@ float4 sampleDetail(float2 uv, float slice)
     return _Detail_mask_01.SampleBias(detailArraySampler, float3(uv, slice), _GlobalMipBias.x);
 }
 
-float3 toView(float3 direction)
+public float3 toView(float3 direction)
 {
     return mad(unity_MatrixV2.xyz, direction.z,
                mad(unity_MatrixV0.xyz, direction.x, unity_MatrixV1.xyz * direction.y));
 }
 
-float3 unitDirection(float3 v)
+public float3 unitDirection(float3 v)
 {
     return v * rsqrt(max(dot(v, v), 1.1754944e-38));
 }
@@ -44,7 +59,7 @@ float3 flattenedChestNormal(float3 normal)
 
 float3 blendBumps(float3 a, float3 b)
 {
-    return normalize(float3(mad(a.xy, b.z, b.xy * a.z), a.z * b.z));
+    return normalize(combineNormalSlopes(a, b));
 }
 
 float3 sampleNipple(float2 uv, out float4 pigment)
@@ -147,10 +162,10 @@ void sampleBodyPigment(inout BodySurface s, StageInput input, float4 detailColor
     s.pigment = tintSaturation(substrate, 0.8);
     float3 fluidNormal = s.basis.toWorld(fluid.normalTS);
     float facingAway = max(1 - dot(fluidNormal, normalize(s.key)), 0.0001);
-    s.paintedPigment = fluidPigment(substrate, fluid.paint, facingAway, dot(fluidNormal, normalize(toView(s.cameraOffset))));
+    s.paintedPigment = skinFluidPigment().apply(substrate, fluid.paint, facingAway, dot(fluidNormal, normalize(toView(s.cameraOffset))));
 }
 
-BodySurface sampleBody(StageInput input, float visibility)
+public BodySurface sampleBody(StageInput input, float visibility)
 {
     BodySurface s = { TangentFrame(input.normalWS, input.tangentWS) };
     s.key = unitDirection(skinKeyDirection());
@@ -158,7 +173,7 @@ BodySurface sampleBody(StageInput input, float visibility)
     s.view = unity_OrthoParams.w == 0 ? normalize(s.cameraOffset)
            : float3(unity_MatrixV0.z, unity_MatrixV1.z, unity_MatrixV2.z);
     float4 detailColor = sampleBodyMasks(s, input, input.uv0Uv1.xy);
-    FluidLayer fluid = sampleFluidLayer(input.uv0Uv1.xy);
+    FluidLayer fluid = skinFluidMap<bodyFluidFilter>().sampleLayer(input.uv0Uv1.xy);
     float4 nipple;
     WetBody wet = sampleBodyNormals(s, input, fluid.normalTS, nipple);
     sampleBodyPigment(s, input, detailColor, nipple, fluid, wet, visibility);

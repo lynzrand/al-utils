@@ -34,3 +34,10 @@ public float3 unpackScaledNormal(float4 packed, float strength)
     float z = max(sqrt(1 - min(dot(xy, xy), 1)), 1e-16);
     return float3(xy * strength, lerp(1, z, saturate(strength)));
 }
+
+// Adding tangent-space slopes gives xy = a.xy / a.z + b.xy / b.z.
+// Keep the product denominator so the material can normalize after blending.
+public float3 combineNormalSlopes(float3 a, float3 b)
+{
+    return float3(mad(a.xy, b.z, a.z * b.xy), a.z * b.z);
+}

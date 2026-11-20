@@ -1,5 +1,11 @@
 // Shared by the face and body color passes. Stock evaluates Unity's directional
 // prefix and local cluster. NPR substitutes the scene's authored directionals.
+import Skin.Frame;
+#if SKIN_FACE
+import Face.Bindings;
+#else
+import Body.Bindings;
+#endif
 import PunctualLighting;
 import Reflectance;
 import ForwardPlus;
@@ -11,13 +17,13 @@ import SceneLighting;
 import MapLighting;
 #endif
 
-struct SkinLights
+public struct SkinLights
 {
-    float3 diffuse;
-    float3 diffuseBandNormal;
-    float3 wrapped;
-    float3 band;
-    float3 incident;
+    public float3 diffuse;
+    public float3 diffuseBandNormal;
+    public float3 wrapped;
+    public float3 band;
+    public float3 incident;
 }
 
 void accumulateSkinLight(inout SkinLights sum, float3 normal, float3 bandNormal,
@@ -63,7 +69,7 @@ void accumulatePunctualSkin(inout SkinLights sum, uint index, float3 positionWS,
 #endif
 }
 
-SkinLights evaluateSkinLights(StageInput input, float3 normal, float3 bandNormal)
+public SkinLights evaluateSkinLights(StageInput input, float3 normal, float3 bandNormal)
 {
     ForwardPlusGrid grid = ForwardPlusGrid(_FPParams0, _FPParams1, _FPParams2.x);
     SkinLights sum = {};
@@ -102,7 +108,7 @@ SkinLights evaluateSkinLights(StageInput input, float3 normal, float3 bandNormal
     return sum;
 }
 
-float3 skinKeyColor()
+public float3 skinKeyColor()
 {
 #if SKIN_NPR
     float3 ambient = max(float3(probe.ar.w, probe.ag.w, probe.ab.w), 0.001);
@@ -112,7 +118,7 @@ float3 skinKeyColor()
 #endif
 }
 
-float3 skinKeyDirection()
+public float3 skinKeyDirection()
 {
 #if SKIN_NPR
     float3 direction = mad(probe.ab.xyz, 0.072175, mad(probe.ag.xyz, 0.715152, probe.ar.xyz * 0.212673));
@@ -123,7 +129,7 @@ float3 skinKeyDirection()
 #endif
 }
 
-float skinMainVisibility(float3 positionWS)
+public float skinMainVisibility(float3 positionWS)
 {
 #if SKIN_NPR || SKIN_PREPASS
     return 1;
@@ -134,7 +140,7 @@ float skinMainVisibility(float3 positionWS)
 #endif
 }
 
-float skinPaletteWeight(float stockWeight, SkinLights lights)
+public float skinPaletteWeight(float stockWeight, SkinLights lights)
 {
 #if SKIN_NPR
     return bandWeight(lights.band);
@@ -143,7 +149,7 @@ float skinPaletteWeight(float stockWeight, SkinLights lights)
 #endif
 }
 
-float3 skinBounce(SkinLights lights)
+public float3 skinBounce(SkinLights lights)
 {
 #if SKIN_NPR
     return lights.band;
@@ -152,7 +158,7 @@ float3 skinBounce(SkinLights lights)
 #endif
 }
 
-float3 applySkinFill(float3 color, float3 pigment, float3 ambient, SkinLights lights)
+public float3 applySkinFill(float3 color, float3 pigment, float3 ambient, SkinLights lights)
 {
 #if SKIN_NPR
     return mad(pigment, skinFill(ambient, skinPaletteWeight(0, lights)), color);

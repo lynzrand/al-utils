@@ -1,13 +1,20 @@
+import Body.Bindings;
+import Body.Material;
+import Body.Surface;
+import Skin.Lighting;
+import Skin.Frame;
+import MaterialColor;
+import Reflectance;
 import ToonPalette;
 
-struct BodyKey
+public struct BodyKey
 {
-    float visibility, bandVisibility, band, surfaceBand;
-    float3 faceLight, rampLight, rimLight;
-    PaletteLight palette;
+    public float visibility, bandVisibility, band, surfaceBand;
+    public float3 faceLight, rampLight, rimLight;
+    public PaletteLight palette;
 };
 
-BodyKey prepareBodyKey(BodySurface s, bool front, float visibility, SkinLights lights)
+public BodyKey prepareBodyKey(BodySurface s, bool front, float visibility, SkinLights lights)
 {
     BodyKey k;
     float3 color = skinKeyColor();
@@ -23,12 +30,12 @@ BodyKey prepareBodyKey(BodySurface s, bool front, float visibility, SkinLights l
     return k;
 }
 
-struct BodyShade
+public struct BodyShade
 {
-    float creases, occlusion;
+    public float creases, occlusion;
 };
 
-BodyShade sampleBodyShade(BodySurface s, float2 uv)
+public BodyShade sampleBodyShade(BodySurface s, float2 uv)
 {
     float chest = s.detail.g * min(mad(max(s.bustMask * 0.75, _Shadow_color.a), 0.7, 0.3), 1);
     float bustShadow = saturate(s.bustMask * chest * _Bust_shadowonoff * saturate((_Bust_size - 0.4) * 2))
@@ -50,7 +57,7 @@ float2 shineLobes(float3 view, float3 normal)
     return mad((facing - float2(0.95, 0.7)) * (float2(1, 0.59) - base), float2(20, 3.3333333), base);
 }
 
-float paintedShine(BodySurface s, BodyKey k)
+public float paintedShine(BodySurface s, BodyKey k)
 {
     float2 uv = mad(k.faceLight.xy, 0.1, toView(s.dryNormal).xy) / mad(_shine_scale, 0.4, 0.6);
     float2 center = shineLobes(s.view + float3(0.1, 0, 0), s.dryNormal);
@@ -66,13 +73,13 @@ float paintedShine(BodySurface s, BodyKey k)
     return saturate(mask) * ((mask * facing) * (lobes.r + lobes.g)) * _Highlight_color.a * 1.2;
 }
 
-struct BodyRim
+public struct BodyRim
 {
-    float main, secondary;
-    float3 transmission;
+    public float main, secondary;
+    public float3 transmission;
 };
 
-BodyRim bodyRim(BodySurface s, BodyKey k, BodyShade shade, StageInput input)
+public BodyRim bodyRim(BodySurface s, BodyKey k, BodyShade shade, StageInput input)
 {
     float3 normal = normalize(s.artisticNormal);
     float3 slope = abs(s.cameraOffset) - input.normalOS;

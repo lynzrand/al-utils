@@ -1,4 +1,9 @@
-float colorOpacity(float2 positionCS, float4 uv, ClothPigment pigment, float wetness)
+import Cloth.Bindings;
+import Cloth.FabricSampling;
+import Cloth.Pigment;
+import Coverage;
+
+public float colorOpacity(float2 positionCS, float4 uv, ClothPigment pigment, float wetness)
 {
     float detail = pigment.detail.b;
     float fade = max(mad(distance(_WorldSpaceCameraPos.xyz, objectOrigin.xyz), -0.09090909, 1), 0);

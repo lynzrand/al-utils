@@ -1,6 +1,12 @@
-#include "Surface.slang"
-#include "Highlights.slang"
-#include "Palette.slang"
+import Body.Bindings;
+import Body.Material;
+import Body.Surface;
+import Body.Highlights;
+import Body.Palette;
+import Skin.Lighting;
+import Skin.Frame;
+import MaterialColor;
+import Coverage;
 
 float coveredBody(StageInput input, float dent)
 {
@@ -16,7 +22,7 @@ float coveredBody(StageInput input, float dent)
     return coverage;
 }
 
-float4 main(StageInput input) : SV_Target0
+public float4 shadeBody(StageInput input)
 {
     float visibility = skinMainVisibility(input.positionWS.xyz);
     BodySurface s = sampleBody(input, visibility);

@@ -7,7 +7,12 @@ cbuffer UnityPerMaterial : register(b1)
     float _TipAlpha : packoffset(c21.y);
 };
 
-float hairCoverage(float2 positionCS)
+public float hairCoverage(float2 positionCS)
 {
     return coveredPixel(positionCS, _Dither) ? max(saturate(_TipAlpha), 0.01) : 0;
+}
+
+public void clipHairCoverage(float2 positionCS, float cutoff)
+{
+    clipCoverage(hairCoverage(positionCS), cutoff, alphaToMaskAvailable != 0);
 }

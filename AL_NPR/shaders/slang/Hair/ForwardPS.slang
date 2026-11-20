@@ -1,5 +1,5 @@
-#define HAIR_NPR
-#include "Color.slang"
+import Hair.Bindings;
+import Hair.Color;
 
 [shader("fragment")]
 float4 main(HairInput input) : SV_Target0

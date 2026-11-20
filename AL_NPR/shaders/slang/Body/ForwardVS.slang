@@ -1,4 +1,5 @@
-#include "DentMaterial.slang"
+import Body.DentMaterial;
+import Geometry.DentedMesh;
 import VertexTransforms;
 
 cbuffer Globals : register(b0)
@@ -44,8 +45,7 @@ struct StageOutput
 [shader("vertex")]
 StageOutput main(StageInput input)
 {
-    float height = _Create_dent_texture.SampleLevel(sampler_Create_dent_texture, input.uv1.xy, 0).r * _Dent_power;
-    float3 dent = mad(input.color.rgb, height * -0.14, height * 0.07);
+    float3 dent = meshDent(input.uv1.xy, input.color.rgb, _Dent_power);
     float3 positionWS = objectToWorld.point(input.positionOS.xyz + dent);
 
     StageOutput output;

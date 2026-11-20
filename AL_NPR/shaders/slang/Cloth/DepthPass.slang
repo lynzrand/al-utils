@@ -1,55 +1,44 @@
+import Cloth.Bindings;
+import Cloth.FabricSampling;
 import Coverage;
 
-cbuffer Globals : register(b0)
+public struct DepthInput
 {
-    float2 screenSize : packoffset(c3);
-    float alphaToMask : packoffset(c4.z);
-    float3 cameraPosition : packoffset(c21);
-    float projectionSign : packoffset(c22);
-    float2 targetScaleBias : packoffset(c27);
+    public float4 position : SV_POSITION;
+    public float4 uv : TEXCOORD0;
 };
 
-cbuffer UnityPerDraw : register(b1)
+public struct ClothDepthCoverage
 {
-    float3 objectOrigin : packoffset(c3);
+    public float opacity;
+    public float cutoff;
 };
 
-#include "FabricSampling.slang"
-
-struct DepthInput
+public ClothDepthCoverage depthCoverage(float2 positionCS, float4 uv, bool shadow)
 {
-    float4 position : SV_POSITION;
-#ifdef CLOTH_NORMALS
-    float3 worldNormal : TEXCOORD0;
-    float4 uv : TEXCOORD1;
-#else
-    float4 uv : TEXCOORD0;
-#endif
-};
-
-[shader("fragment")]
-float4 main(DepthInput input) : SV_Target0
-{
-    float detail = _Detail_mask_01.Sample(sampler_Detail_mask_01, input.uv.xy).b;
+    float detail = _Detail_mask_01.Sample(sampler_Detail_mask_01, uv.xy).b;
     float distanceFade = max(mad(distance(cameraPosition, objectOrigin), -0.09090909, 1), 0);
-    float4 base = _Create_main_texture.SampleBias(sampler_Create_main_texture, input.uv.xy, _Mip);
-    float3 region = clothRegion(input.uv.xy);
-    float wetness = clothWetness(mad(input.uv.xy, _LiquidTiling.zw, _LiquidTiling.xy), region);
-    Fabric fabric = sampleDepthFabric(base.rgb, input.uv.xy, region);
-    float opacity = garmentOpacity(fabric, base.a, input.uv.xy, detail, distanceFade, wetness);
-    float threshold = ditherThreshold(input.position.xy, screenSize, targetScaleBias, projectionSign);
-    opacity = maskedClothOpacity(opacity, input.uv, threshold, true);
+    float4 base = _Create_main_texture.SampleBias(sampler_Create_main_texture, uv.xy, _Mip);
+    float3 region = clothRegion(uv.xy);
+    float wetness = clothWetness(mad(uv.xy, _LiquidTiling.zw, _LiquidTiling.xy), region);
 
-#ifdef CLOTH_SHADOW
-    float cutoff = garmentShadowCutoff(detail);
-#else
     float cutoff = clothCutoff(detail);
+    Fabric fabric = { base.rgb, 0 };
+#ifdef CLOTH_CUTOUT_LAYOUT
+    float2 detailUV = mad(uv.xy, _Detail_mask_01_ST.xy, _Detail_mask_01_ST.zw);
+    fabric.sheer = sheerAmount(region, _Detail_mask_01.Sample(sampler_Detail_mask_01, detailUV).r);
+    fabric.dyedColor = tintCloth(base.rgb, uv.xy, _ColorMask, sampler_ColorMask);
+    if (shadow)
+        cutoff = _ShadowClip;
 #endif
-#ifdef CLOTH_NORMALS
-    clip(opacity - cutoff);
-    return float4(normalize(input.worldNormal), 0);
-#else
-    clipCoverage(opacity, cutoff, alphaToMask != 0);
+    float opacity = garmentOpacity(fabric, base.a, uv.xy, detail, distanceFade, wetness);
+    float threshold = ditherThreshold(positionCS, screenSize, targetScaleBias, projectionSign);
+    return { maskedClothOpacity(opacity, uv, threshold, true), cutoff };
+}
+
+public float4 clothDepth(DepthInput input, bool shadow)
+{
+    ClothDepthCoverage coverage = depthCoverage(input.position.xy, input.uv, shadow);
+    clipCoverage(coverage.opacity, coverage.cutoff, alphaToMask != 0);
     return 0;
-#endif
 }

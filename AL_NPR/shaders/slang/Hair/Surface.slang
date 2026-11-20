@@ -1,19 +1,19 @@
+import Hair.Bindings;
 import SurfaceNormals;
 
-struct HairSurface
+public struct HairSurface
 {
-    TangentFrame basis;
-    float3 toCamera, view, key, shadingNormal;
-    float viewEdge, elevation;
-
+    public TangentFrame basis;
+    public float3 toCamera, view, key, shadingNormal;
+    public float viewEdge, elevation;
 };
 
-float3 safeUnit(float3 v)
+public float3 safeUnit(float3 v)
 {
     return v * rsqrt(max(dot(v, v), 1.1754944e-38));
 }
 
-HairSurface makeHairSurface(HairInput input)
+public HairSurface makeHairSurface(HairInput input)
 {
     HairSurface s;
     s.basis = TangentFrame(input.normalWS, input.tangentWS);
@@ -27,20 +27,20 @@ HairSurface makeHairSurface(HairInput input)
     return s;
 }
 
-float2 materialUV(float2 uv, float4 scaleOffset)
+public float2 materialUV(float2 uv, float4 scaleOffset)
 {
     return mad(uv, scaleOffset.xy, scaleOffset.zw);
 }
 
-struct HairMasks
+public struct HairMasks
 {
-    float4 colors;
-    float3 detail;
-    float shade;
-    float rim;
+    public float4 colors;
+    public float3 detail;
+    public float shade;
+    public float rim;
 };
 
-HairMasks sampleHairMasks(float2 uv)
+public HairMasks sampleHairMasks(float2 uv)
 {
     HairMasks mask;
     float green = detailMask1.Sample(detailMask1Sampler, materialUV(uv, _md_01_ST)).g;
@@ -51,7 +51,7 @@ HairMasks sampleHairMasks(float2 uv)
     return mask;
 }
 
-float3 strandPigment(HairMasks mask)
+public float3 strandPigment(HairMasks mask)
 {
     float3 color = lerp(_Main_color.rgb, _Sub_color_02.rgb, mask.colors.g * _Sub_color_02.a);
     color = lerp(color, _Sub_color_01.rgb, mask.colors.b * _Sub_color_01.a);

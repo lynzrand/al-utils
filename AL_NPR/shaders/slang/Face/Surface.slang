@@ -1,12 +1,16 @@
-struct FaceDetail
+import Face.Bindings;
+import Face.Material;
+import Skin.Frame;
+
+public struct FaceDetail
 {
-    float4 mask;
-    float4 secondary;
-    float liquid;
-    float3 liquidNormalTS;
+    public float4 mask;
+    public float4 secondary;
+    public float liquid;
+    public float3 liquidNormalTS;
 }
 
-FaceDetail sampleFaceDetail(float2 uv)
+public FaceDetail sampleFaceDetail(float2 uv)
 {
     FaceDetail detail;
     detail.mask = _Detail_mask_01.Sample(sampler_Detail_mask_01, mad(uv, _Detail_mask_01_ST.xy, _Detail_mask_01_ST.zw));
@@ -29,7 +33,7 @@ FaceDetail sampleFaceDetail(float2 uv)
     return detail;
 }
 
-float3 faceLineTint(float3 viewDirection, float3 geometricNormal, float detailMask, float3 pigment)
+public float3 faceLineTint(float3 viewDirection, float3 geometricNormal, float detailMask, float3 pigment)
 {
     float3 view = normalize(viewDirection + float3(0, 0.36, -0.03));
     float facing = dot(view, normalize(geometricNormal));
@@ -38,7 +42,7 @@ float3 faceLineTint(float3 viewDirection, float3 geometricNormal, float detailMa
     return mad(mad(_Line_power, 0.8, 0.2), mad(-shaded, pigment, _Line_color), shaded * pigment);
 }
 
-float3 faceViewDirection(float3 positionWS)
+public float3 faceViewDirection(float3 positionWS)
 {
     float3 cameraBack = float3(unity_MatrixV0.z, unity_MatrixV1.z, unity_MatrixV2.z);
     return unity_OrthoParams.w == 0 ? normalize(_WorldSpaceCameraPos - positionWS) : cameraBack;

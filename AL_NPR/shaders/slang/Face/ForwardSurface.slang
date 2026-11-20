@@ -1,20 +1,27 @@
+import Face.Bindings;
+import Face.Material;
+import Face.Makeup;
+import Face.Surface;
+import Skin.Frame;
+import Skin.Lighting;
+import Skin.FluidBindings;
+import Skin.FluidLayer;
 import SurfaceNormals;
 import Skin.SurfaceMath;
-#include "../Skin/FluidPigment.slang"
 import MaterialColor;
 
-struct FaceSurface
+public struct FaceSurface
 {
-    TangentFrame basis;
-    FaceMakeup makeup;
-    FaceDetail detail;
-    float3 eyeOffset;
-    float3 view;
-    float3 bumpWorld;
-    float3 normal;
-    float3 pigment;
-    float lineCoverage;
-    float detailShade;
+    public TangentFrame basis;
+    public FaceMakeup makeup;
+    public FaceDetail detail;
+    public float3 eyeOffset;
+    public float3 view;
+    public float3 bumpWorld;
+    public float3 normal;
+    public float3 pigment;
+    public float lineCoverage;
+    public float detailShade;
 }
 
 float3 wetFaceReflection(StageInput input, TangentFrame basis, FaceDetail detail, float3 view, float sweatHeight)
@@ -28,7 +35,7 @@ float3 wetFaceReflection(StageInput input, TangentFrame basis, FaceDetail detail
                              input.positionOS.xy, wetness, coverage);
 }
 
-FaceSurface sampleFaceSurface(StageInput input)
+public FaceSurface sampleFaceSurface(StageInput input)
 {
     FaceSurface s;
     float2 uv = input.uv0Uv1.xy;
@@ -37,9 +44,8 @@ FaceSurface sampleFaceSurface(StageInput input)
     s.view = faceViewDirection(input.positionWS.xyz);
     s.makeup = sampleFaceMakeup(input);
     s.detail = sampleFaceDetail(uv);
-    FluidLayer fluid = sampleFluidLayer(uv);
-    float3 combined = s.detail.liquidNormalTS.z * fluid.normalTS;
-    combined.xy = mad(s.detail.liquidNormalTS.xy, fluid.normalTS.z, combined.xy);
+    FluidLayer fluid = skinFluidMap<FluidFilter.Linear>().sampleLayer(uv);
+    float3 combined = combineNormalSlopes(s.detail.liquidNormalTS, fluid.normalTS);
     s.bumpWorld = s.basis.toWorld(normalize(combined));
     s.normal = normalize(s.bumpWorld);
 
@@ -52,7 +58,7 @@ FaceSurface sampleFaceSurface(StageInput input)
     float3 viewSpaceEye = mad(unity_MatrixV2.xyz, s.eyeOffset.z, mad(unity_MatrixV0.xyz, s.eyeOffset.x, unity_MatrixV1.xyz * s.eyeOffset.y));
     float3 light = skinKeyDirection();
     light = normalize(light * rsqrt(max(dot(light, light), 1.1754944e-38)));
-    s.pigment = fluidPigment(saturate(reflected + wet), fluid.paint, max(1 - dot(fluidNormal, light), 0.0001),
+    s.pigment = skinFluidPigment().apply(saturate(reflected + wet), fluid.paint, max(1 - dot(fluidNormal, light), 0.0001),
         dot(fluidNormal, normalize(viewSpaceEye)));
 
     float4 lines = _Lip_line_texture.Sample(sampler_Lip_line_texture, mad(input.uv2Uv3.zw, _Lip_line_texture_ST.xy, _Lip_line_texture_ST.zw));
@@ -63,7 +69,7 @@ FaceSurface sampleFaceSurface(StageInput input)
     return s;
 }
 
-float faceGloss(StageInput input, FaceSurface s)
+public float faceGloss(StageInput input, FaceSurface s)
 {
     float parallax = normalize(s.basis.toTangent(s.eyeOffset)).x;
     float2 uv = float2(mad(parallax, -0.0475, input.uv2Uv3.x), input.uv2Uv3.y);

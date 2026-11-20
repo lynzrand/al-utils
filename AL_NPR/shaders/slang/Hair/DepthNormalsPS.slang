@@ -1,4 +1,4 @@
-#include "Depth.slang"
+import Hair.Depth;
 
 [shader("fragment")]
 float4 main(float4 positionCS : SV_Position, float3 normalWS : TEXCOORD0) : SV_Target0
