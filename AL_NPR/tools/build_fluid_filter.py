@@ -34,7 +34,7 @@ def patch_body(code, entry):
 
 
 def build(source, output, slangc=None):
-    entry = compile_entry("FluidSample", source="FluidSample.slang", slangc=slangc)
+    entry = compile_entry("FluidSample", source="Bundle/FluidSample.slang", slangc=slangc)
     build_material_bundle(source, output, lambda code, _: patch_body(code, entry), targets=(146,))
 
 

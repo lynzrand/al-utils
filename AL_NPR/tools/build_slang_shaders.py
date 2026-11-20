@@ -6,7 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 
-SOURCE = Path(__file__).resolve().parents[1] / "shaders/slang"
+SOURCE = Path(__file__).resolve().parents[1] / "shaders"
 
 
 def main():
@@ -37,7 +37,8 @@ def main():
             if path is None:
                 parser.error(f"Cannot find compiler {executable}")
             options.append(f"-D{variable}={Path(path).resolve()}")
-    subprocess.run(["cmake", "-S", SOURCE, "-B", work, "-G", "Ninja", *options], check=True)
+    location = [work] if (work / "CMakeCache.txt").is_file() else ["-S", SOURCE, "-B", work]
+    subprocess.run(["cmake", *location, "-G", "Ninja", *options], check=True)
     subprocess.run(["cmake", "--build", work, "--parallel", "4", "--target",
                     *(args.program or ["shaders"])], check=True)
     for name in selected:

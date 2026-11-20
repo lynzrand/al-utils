@@ -1,49 +1,94 @@
-# Character lighting source
+# Character shaders in Slang
 
-Start with the [Slang sources and build instructions](slang/README.md). The bundle builder compiles toon bands and diffuse fill from [SceneLighting.slang](slang/SceneLighting.slang) into the skin and fabric keyword variants. [SceneToonLighting.hlsl](SceneToonLighting.hlsl) is a historical reference for the November 18 arithmetic. [PreviousMaterialFill.hlsl](PreviousMaterialFill.hlsl) reconstructs the previous fill at the same two points in the material pipeline.
+For a traced game draw, pass and binding tables, and an editing workflow, see the [maintainer’s guide](MAINTAINING.md). The [lighting notes](LIGHTING.md) cover the original comparisons behind the NPR look.
 
-```mermaid
-flowchart TD
-    L["One eligible map light"] --> A["Color × distance and spot falloff"]
-    A --> B["Limit intensity while preserving hue"]
-    B --> C["Multiply by visibility and normal bent toward this light"]
-    C --> D["Choose this light's toon band"]
-    D --> E["Sum the band colors from all lights, then cap"]
-    E --> F["Colored direct light and scalar band"]
-    N["Scene ambient probe at the material normal"] --> G["Shared diffuse fill"]
-    F --> G
-    F --> P["Original skin or cloth palette"]
-    G --> S["Tint by processed skin color × 0.06"]
-    G --> T["Tint by processed fabric color × 0.97"]
-    P --> O["Material highlights, overlays and coverage"]
-    S --> O
-    T --> O
-```
+Start in `Materials/<material>/Passes/` for a Unity stage. Its parent directory contains the material's bindings and shading code. Face and body share skin operations in `Materials/Skin/`. The [program manifest](programs.json) maps each named Unity stage to its implementation, including passes that reuse another material’s entry.
 
-The two fill multipliers calibrate different starting points. The previous fabric already used the full common fill. Skin already had its own lit palette and had zero supplemental fill. A multiplier of 0.06 introduces a small contribution there. Final brightness can still differ with pigment, normal maps, gloss and the original material composition.
+`Lighting/`, `Surface/` and `Geometry/` contain modules used across materials. `Bundle/` contains the fragment entry points the release linker binds into the game's keyword variants. `Visibility/` contains the ray and interop compute shaders. Historical HLSL lives under `hlsl/`.
 
-The visibility input comes from the game's punctual shadow lookup and distance fade. The authored directional list supplies color and direction with visibility equal to one. Each light bends the original surface normal 25% toward its own direction. The resulting normalized dot product drives its diffuse band. An orbit around a stationary subject therefore leaves that input fixed. Specular reflections still use the view direction.
+| To change | Start here |
+| --- | --- |
+| Mesh deformation, outline extrusion, transforms | `Geometry/`, `Geometry/VertexTransforms.slang`, material binding files |
+| Dither, cutout and alpha-to-coverage | `Surface/Coverage.slang`, material depth and opacity functions |
+| Tile and depth-bin traversal, attenuation, shadows | `Lighting/ForwardPlus.slang`, `Lighting/PunctualLighting.slang`, `Lighting/PunctualShadows.slang` |
+| Cosine and wrapped diffuse, wet Blinn–Phong highlights, grazing rims | `Lighting/Reflectance.slang` |
+| Authored directionals, toon band and diffuse fill | `Lighting/MapLighting.slang`, `Lighting/SceneLighting.slang` |
+| Spherical harmonics, sweat and fluid normals | `Lighting/AmbientProbe.slang`, `Surface/MaterialNoise.slang`, `Materials/Skin/FluidMask.slang` |
+| Stock light color, palette exposure and shadow ramps | `Lighting/ToonPalette.slang`, material palette files |
+| Painted hair highlights | `Materials/Hair/Color.slang`, `Materials/Hair/HairLighting.slang` |
 
-## Full program listings
+For face color, start in `Materials/Face/Passes/ForwardPS.slang`. Its surface and lighting functions use the same cheek, lip and nose makeup as the outline prepass.
+For body color, `Materials/Body/Color.slang` composes pigment, highlights and palette work for both color passes.
+Both materials share skin lighting, painted fluid, sweat and reflection in `Materials/Skin/`. Each material's `Material.slang` declares its Unity property layout.
 
-The local [source pack](../../artifacts/npr/normal-bend/character-shader-sources.zip) includes the handwritten lighting source and 16 translated HLSL listings. Each material has a stock game version, the November 18 version, the camera-bent calibrated version and the normal-bent version. The manifests record the Unity slot, keyword set and DXBC digest. These listings cover the same representative regular Forward+ pixel variant in all four builds. Local names and packed registers reflect the compiler output; the original Unity project source is unavailable.
+## Build a material
 
-To regenerate a listing from local game assets, run `export_material_programs.py OUTPUT --source INPUT --vkd3d PATH --spirv-cross PATH`. Omit `--source` for the stock serialized file. The exporter also works with just the output and input paths to extract DXBC for D3D disassembly. The inspection path uses vkd3d's DXBC-to-SPIR-V translator and SPIRV-Cross's HLSL backend. All 16 listings compiled with the Windows SDK DXC at `ps_6_0`. The running game loads SM5 programs with its original Unity signatures and resource bindings. The bundle builder uses FXC on the named entry points and binds their arithmetic into those programs.
-
-## Scene-lit hair and face shadow trials
-
-[HairLighting.slang](slang/HairLighting.slang) contains the reflection shape, diffuse light cap and reflection tint. The painted version samples the artist's highlight texture along the strand at a coordinate derived from each light's half-vector. The original material contributes a weaker painted stripe. Each eligible punctual source supplies its own distance falloff, spot falloff and shadow visibility. Authored map directionals supply color and direction with unit visibility. Both hair color passes use this calculation. The base pass keeps its opaque dither coverage and the forward overlay keeps its material alpha. The hair outline uses the original shader.
-
-[ShadowFiltering.slang](slang/ShadowFiltering.slang) samples punctual shadow visibility with a nine-tap tent. The face chooses its toon band from the unoccluded incident light and weights the result by the filtered visibility. The night beach comparison showed that disabling character casting removed the broad contour, and hair alone reproduced it. Hiding the face shadow proxy alone made little difference. The additional-light atlas was 8192 × 4096 D16. D32 softened a secondary contour. Applying visibility after the band made the larger difference in the tested pose. The new loader exposes an opt-in `HigherShadowDepthPrecision` setting for the additional-light atlas.
-
-To reproduce the live painted trial from the normal-bend default, run these commands from the repository root.
+Install CMake 3.21 or newer, native Ninja and `slangc`. The game's D3D backend uses Shader Model 5 DXBC. Install FXC from the Windows SDK. If a Windows installation has multiple Ninja executables, select a native one with `-DCMAKE_MAKE_PROGRAM=path/to/ninja.exe`. Run these commands from the repository root.
 
 ```powershell
-python AL_NPR/tools/build_hair_reflection.py artifacts/npr/default-build/al-skin-lighting.unity3d artifacts/npr/normal-bend/balanced.unity3d --style painted
-python AL_NPR/tools/build_face_shadow_trial.py artifacts/npr/normal-bend/balanced.unity3d artifacts/npr/normal-bend/balanced-face.unity3d
-python AL_NPR/tools/validate_toon_bundle.py artifacts/npr/normal-bend/balanced-face.unity3d
+cmake -S AL_NPR/shaders -B artifacts/npr/npr -G Ninja
+cmake --build artifacts/npr/npr --target BodyForwardPS
+cmake --build artifacts/npr/npr
+
+cmake -S AL_NPR/shaders -B artifacts/npr/stock -G Ninja -DSHADING=stock
+cmake --build artifacts/npr/stock
 ```
 
-The hair builder also supports `--style gloss`, `--style ribbon` and `--specular-only` for isolating reflections. The new lighting expressions run in the regular Forward+ programs, including conventional instancing. The base pass uses the forward color program family with its own coverage. DOTS appearance and custom character cards have not been visually tested. The trial bundle leaves the skin body, fabric, hair depth and shadow caster programs intact.
+The compatibility command `python AL_NPR/tools/build_slang_shaders.py OUTPUT` uses the same CMake build. It accepts `--shading stock`, repeatable `--program`, `--target dxil` and `--dxil-profile sm_6_6`. Its historical `--filter-body-oil` switch is opt-in.
 
-The [hair comparison](../../artifacts/npr/normal-bend/hair-final.jpg) includes the isolated painted reflection under two colored lamps. The [face comparison](../../artifacts/npr/normal-bend/face-comparison.jpg) holds the camera, pose and hair shader fixed. In two eight-second samples per condition at 2560 × 1440, the stock-hair baseline recorded median GPU frame times of 6.39 and 6.38 ms. Painted hair plus the face filter recorded 6.30 and 6.23 ms at D16, and 6.01 and 6.30 ms at D32. These are whole-frame timings for the held beach camera.
+Each tree produces 50 named stages covering Forward, ExtraPrePass, ShadowCaster, DepthOnly and DepthNormals for five materials. Entries with the same source, stage and compile definitions share a compiled program. Ninja tracks imported modules. Set `SLANGC` and `FXC` as CMake cache paths to choose compiler binaries. The character DXBC build lowers Slang to intermediate HLSL and uses FXC with `/Od /Gis` for arithmetic comparisons.
+
+### Target features
+
+| Setting | Meaning |
+| --- | --- |
+| `SHADING=npr` or `stock` | Compile the modified material or the reconstruction of the game's original material. |
+| `SHADER_TARGET=dxbc` or `dxil` | Select bytecode format. The Unity bundle target consumes DXBC. |
+| `DXIL_PROFILE=sm_6_6` | Select a shader model for DXIL. For example, `sm_6_6+rayquery` also declares ray-query support. Run `slangc -h capability` for supported spellings. |
+| `FILTER_BODY_OIL=ON` | Use cubic B-spline reconstruction of the painted body mask in the NPR body Forward stage. Set it to `OFF` to use the original sample. |
+
+```powershell
+cmake -S AL_NPR/shaders -B artifacts/npr/sm66 -G Ninja -DSHADER_TARGET=dxil -DDXIL_PROFILE=sm_6_6
+cmake --build artifacts/npr/sm66 --target BodyForwardPS
+```
+
+DXIL requires a downstream DXC library. CMake looks for the SDK installation on Windows. Set `-DDXC=path/to/dxc` to select another installation. Hardware capabilities describe what instructions the compiler may emit. Unity keywords such as `_LIGHT_LAYERS` choose game permutations with specific bindings and stage interfaces. Each entry in `programs.json` records the keyword set for its recovered permutation and its source DXBC digest. A `stock` override records differences from the NPR trial. The optional `defines` array selects Slang compilation features for a stage and its imports. The NPR hair programs use `HAIR_NPR=1`. [Slang compiler options](https://shader-slang.org/slang/command-line-slangc-reference.html)
+
+## Build a Unity bundle or extract original bytecode
+
+Set `AL_GAME_PATH` to your Amanatsu Location 1.0.4 installation when configuring. These targets require Python 3.11 with UnityPy 1.25.4 and lz4 4.4.5. The stage-only targets work without an installation of the game.
+
+```powershell
+$env:AL_GAME_PATH = 'D:/Games/AmanatsuLocation'
+cmake -S AL_NPR/shaders -B artifacts/npr/stock -G Ninja -DSHADING=stock
+cmake --build artifacts/npr/stock --target stock-reference original-bundle check-bundle
+cmake -S AL_NPR/shaders -B artifacts/npr/npr -G Ninja -DSHADING=npr
+cmake --build artifacts/npr/npr --target bundle
+```
+
+| Target | Output in the build directory |
+| --- | --- |
+| `stock-reference` | `stock-reference/*.dxbc` contains the 50 exact, hash-checked original game binaries for comparison. |
+| `original-bundle` | `original/al-skin-lighting.unity3d` packages all original game permutations with the plugin’s replacement shader names. |
+| `check-bundle` | Reopens the editable bundle and verifies each selected stage against its compiled file, and every original program slot and Unity pass table against its base. |
+| `bundle` | `al-skin-lighting.unity3d` uses your compiled complete stages for the 50 selected permutations. Additional slots preserve the original bindings and keep the other permutations on their base programs. The stock configuration uses original game assets as its base. NPR uses the release variant bundle. |
+| `release-bundle` | `variants/release.unity3d` contains the broad NPR variant build. The linker compiles shared Slang entry functions and binds them at the corresponding sites in the original Unity programs. Changes confined to a complete stage appear in `bundle`. |
+
+The manifest covers one non-instanced permutation per stage. Instancing, DOTS and other keyword layouts require their own full-stage reconstructions before those complete sources can replace them. The release linker retains the surrounding game code for its 1,088 regular Forward+ and hair color programs. The verified release with Slang 2026.14.1 and Windows SDK 10.0.26100.0 has SHA-256 `36ae8431f0abc87cefcf487385c345859d89347c94106e48e6ae997a2493aec1`.
+
+## Fidelity checks
+
+The reference for stock shading is the original game DXBC. For NPR, compare with the corresponding program from the released bundle. A compiler can preserve rendering while changing bytecode.
+
+- D3D11 WARP accepted the 50 reconstructed stages in each configuration. A stream-output comparison matched every vertex output for 128 inputs per stage across all 25 original vertex programs.
+- RenderDoc replay of the face Forward and outline draws matched their packed HDR reference pixels. On the body Forward draw, stock and NPR each differed at one of 42,480 affected pixels, by one packed green-channel step. The body outline matched.
+- The garment WARP comparisons covered opacity, wet layers, normals and clustered lighting. Across six color programs there were zero coverage mismatches and a maximum absolute color error of 1.8e-7. All garment depth and shadow coverage comparisons matched exactly.
+- Hair and cloth draws in the game capture had small packed HDR differences. Identical-bytecode replay controls also varied at a few pixels. These comparisons cover the tested draws. Full-stage frame time and behavior across other scenes remain unmeasured.
+
+## Performance experiments
+
+The optional `performance` target builds the AL_Performance map shadow caster, opaque replay control and twelve-tap depth-normal SSAO reconstruction. Set `PERFORMANCE_FEATURES` to a semicolon-separated list of experiment defines. The map shader supports `FAST_UNIFORM_PATH`, `FAST_OPAQUE_PATH` and `FAST_AUDITED_MAP_TEXTURES`. SSAO supports `SKIP_INVALID_SAMPLE` and `SKIP_ZERO_NUMERATOR`. The opaque control assumes the specific map002 textures and constants described in the [map shader experiment](../../AL_Performance/tools/README.shader-patch.md).
+
+The map-shadow experiments matched the historical HLSL in 2,349,056 synthetic pixel comparisons across all eight feature combinations. All four SSAO configurations matched the historical HLSL on a 2560 × 1440 captured draw.
+
+The optional DXIL target `visibility-kernels` builds the native interop compute shader at SM 6.0 and the inline ray-query shaders at SM 6.5. `receiver-diagnostics` builds the frozen-camera diagnostic permutations. [Receiver tests](../tools/README.ray-receiver-reprojection.md)

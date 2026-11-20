@@ -4,7 +4,9 @@ call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\v
 if errorlevel 1 exit /b %errorlevel%
 pushd "%~dp0\..\.."
 if not exist artifacts\npr\unity-ray-probe mkdir artifacts\npr\unity-ray-probe
-cmake -S AL_NPR\shaders\slang -B artifacts\npr\unity-ray-probe -G "NMake Makefiles" -DSHADER_TARGET=dxil
+set "cmake_location=-S AL_NPR\shaders -B artifacts\npr\unity-ray-probe"
+if exist artifacts\npr\unity-ray-probe\CMakeCache.txt set "cmake_location=artifacts\npr\unity-ray-probe"
+cmake %cmake_location% -G "NMake Makefiles" -DSHADER_TARGET=dxil
 if errorlevel 1 goto failed
 cmake --build artifacts\npr\unity-ray-probe --target UnityRayProbe UnityDepthRayVisibility
 if errorlevel 1 goto failed

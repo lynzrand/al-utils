@@ -1,4 +1,4 @@
-import Coverage;
+import Surface.Coverage;
 
 // Binding and interpolator layout recovered from the captured SM5 ShadowCaster.
 cbuffer CameraConstants : register(b0)

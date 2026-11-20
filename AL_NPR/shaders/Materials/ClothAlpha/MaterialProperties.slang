@@ -1,0 +1,111 @@
+import Materials.Cloth.FabricOpacity;
+
+public typealias Fabric = CutoutFabric;
+
+#if defined(CLOTH_DEPTH_PASS)
+public cbuffer UnityPerMaterial : register(b2)
+#elif defined(CLOTH_PREPASS)
+public cbuffer UnityPerMaterial : register(b5)
+#else
+public cbuffer UnityPerMaterial : register(b6)
+#endif
+{
+    public float4 _ColorMask_ST : packoffset(c1.x);
+    public float4 _Color_Cuvature : packoffset(c2.x);
+    public float4 _Main_color_02 : packoffset(c3.x);
+    public float4 _liquidmask_ST : packoffset(c4.x);
+    public float4 _Detail_mask_01_ST : packoffset(c5.x);
+    public float4 _LiquidTiling : packoffset(c6.x);
+    public float4 _Shade_color : packoffset(c7.x);
+    public float4 _Main_color_01 : packoffset(c9.x);
+    public float4 _FluidTex_TexelSize : packoffset(c10.x);
+    public float4 _FluidTex_ST : packoffset(c11.x);
+    public float4 _Normal_map_ST : packoffset(c12.x);
+    public float4 _Cloth_alpha_ST : packoffset(c13.x);
+    public float4 _Main_color_03 : packoffset(c14.x);
+    public float4 _Main_color_04 : packoffset(c15.x);
+    public float3 _Line_color : packoffset(c16.x);
+    public float _TestRim : packoffset(c16.w);
+    public float _RimMaskIntensity : packoffset(c17.x);
+    public float _FluidMinColorScale : packoffset(c17.z);
+    public float _FluidColorScatter : packoffset(c17.w);
+    public float _FluidTransmittance : packoffset(c18.x);
+    public float _UseShadowColor : packoffset(c18.z);
+    public float _FluidShadowSaturation : packoffset(c18.w);
+    public float _mdGIntensity : packoffset(c19.x);
+    public float _mdGPower : packoffset(c19.y);
+    public float _BaseColorMix : packoffset(c19.z);
+    public float _mdGShadeControle : packoffset(c19.w);
+    public float _sukeONOFF : packoffset(c20.x);
+    public float _sukebbot : packoffset(c20.y);
+    public float _sukebtop : packoffset(c20.z);
+    public float _Shadow_power : packoffset(c20.w);
+    public float _FluidShadowPower : packoffset(c21.x);
+    public float _TestRimSub : packoffset(c21.y);
+    public float _FluidHighlightPower : packoffset(c21.z);
+    public float _alpha_b : packoffset(c21.w);
+    public float _AlphaMaskuv : packoffset(c22.x);
+    public float _alpha_a : packoffset(c22.y);
+    public float _alpha2 : packoffset(c22.z);
+    public float _alpha : packoffset(c22.w);
+    public float _AlphaDither : packoffset(c23.x);
+    public float _Dither : packoffset(c23.y);
+    public float _LightCancel : packoffset(c24.x);
+    public float _AlphaLine : packoffset(c24.y);
+    public float _Line_power : packoffset(c24.z);
+    public float _TestSSS : packoffset(c24.w);
+    public float _SSSIntensity : packoffset(c25.x);
+    public float _SSSForce : packoffset(c25.y);
+    public float _AddRimIntensity : packoffset(c25.z);
+    public float _sukefbot : packoffset(c25.w);
+    public float _TestOC : packoffset(c26.x);
+    public float _TestMatcapShade : packoffset(c26.y);
+    public float _FluidScale : packoffset(c26.z);
+    public float _FluidHighlightSize : packoffset(c26.w);
+    public float _FluidShadowSize : packoffset(c27.x);
+    public float _sukeftop : packoffset(c27.y);
+    public float _AseIntensity : packoffset(c27.z);
+    public float _SukeScale : packoffset(c27.w);
+    public float _MatcapIndex2 : packoffset(c28.x);
+    public float _MatcapIndex3 : packoffset(c28.y);
+    public float _MatcapIndex4 : packoffset(c28.z);
+    public float _Mip : packoffset(c28.w);
+    public float _Main_color_switchtest : packoffset(c29.x);
+    public float _liquidbbot : packoffset(c29.y);
+    public float _liquidbtop : packoffset(c29.z);
+    public float _liquidfbot : packoffset(c29.w);
+    public float _liquidftop : packoffset(c30.x);
+    public float _MatcapIndex1 : packoffset(c30.y);
+    public float _BumpMapScale : packoffset(c30.z);
+    public float _Fluid_Noise_Amount : packoffset(c30.w);
+    public float _Fluid_Noise_Scale : packoffset(c31.x);
+    public float _LineWidthS : packoffset(c31.w);
+    public float _Line_width : packoffset(c32.x);
+    public float _FluidNormalScale : packoffset(c33.x);
+    public float _SukeOffset : packoffset(c33.y);
+    public float _MaskOverride : packoffset(c33.z);
+    public float _Matcap_power_02 : packoffset(c33.w);
+    public float _SukeNormalPower : packoffset(c34.x);
+    public float _SukeNormalLength : packoffset(c34.y);
+    public float _NureNormalPower : packoffset(c34.z);
+    public float _AlphaClipForce : packoffset(c34.w);
+    public float _nurebbot : packoffset(c35.x);
+    public float _nurebtop : packoffset(c35.y);
+    public float _nurefbot : packoffset(c35.z);
+    public float _nureftop : packoffset(c35.w);
+    public float _Metallic_power_04 : packoffset(c36.x);
+    public float _Matcap_power_01 : packoffset(c36.y);
+    public float _Metallic_power_03 : packoffset(c36.z);
+    public float _Metallic_power_01 : packoffset(c36.w);
+    public float _MaskOverrideGloss : packoffset(c37.x);
+    public float _Gloss_power_04 : packoffset(c37.y);
+    public float _Gloss_power_03 : packoffset(c37.z);
+    public float _Gloss_power_02 : packoffset(c37.w);
+    public float _Gloss_power_01 : packoffset(c38.x);
+    public float _Matcaponoff : packoffset(c38.y);
+    public float _Matcap_power_04 : packoffset(c38.z);
+    public float _Matcap_power_03 : packoffset(c38.w);
+    public float _Metallic_power_02 : packoffset(c39.x);
+    public float _ShadowClip : packoffset(c39.y);
+    public float _AlphaClip : packoffset(c39.z);
+};

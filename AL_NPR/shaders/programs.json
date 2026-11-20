@@ -1,0 +1,495 @@
+{
+  "FaceExtraPrePassVS": {
+    "file": "Materials/Face/Passes/ExtraPrePassVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "a72a6cc4463e216a7cd5b8375f03048ae513c045543b28a3fe819e010377fe71"
+  },
+  "FaceExtraPrePassPS": {
+    "file": "Materials/Face/Passes/ExtraPrePassPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "f22ddb89205c3dd0f237cb4fffa1c6adb5cd8df204fb43d8ea72e65b6c738157",
+    "defines": [
+      "SKIN_FACE=1",
+      "SKIN_NPR=0",
+      "SKIN_PREPASS=1"
+    ]
+  },
+  "FaceForwardVS": {
+    "file": "Materials/Face/Passes/ForwardVS.slang",
+    "stage": "vertex",
+    "keywords": [
+      "_MAIN_LIGHT_SHADOWS_CASCADE",
+      "_FORWARD_PLUS",
+      "_LIGHT_LAYERS"
+    ],
+    "original": "1980f4c716c454597e59383bfe7479c9b13e6f642d521b4fe846e7f824f8f050"
+  },
+  "FaceForwardPS": {
+    "file": "Materials/Face/Passes/ForwardPS.slang",
+    "stage": "fragment",
+    "keywords": [
+      "_MAIN_LIGHT_SHADOWS_CASCADE",
+      "_FORWARD_PLUS",
+      "_LIGHT_LAYERS",
+      "_ADDITIONAL_LIGHT_SHADOWS"
+    ],
+    "original": "55da46b220ec8299e6aceda95882e12ec179153ca6c65f640f6ce1a67c3a95f8",
+    "stock": {
+      "sha256": "65bc9b7a730b6c94820feed45d7a5785eebc70cde9d06eed5826f0a0b20265ce",
+      "defines": [
+        "SKIN_FACE=1",
+        "SKIN_NPR=0",
+        "SKIN_PREPASS=0"
+      ]
+    },
+    "defines": [
+      "SKIN_FACE=1",
+      "SKIN_NPR=1",
+      "SKIN_PREPASS=0"
+    ]
+  },
+  "FaceShadowCasterVS": {
+    "file": "Materials/Face/Passes/ShadowCasterVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "843bee9716e734827a4b3a4054f9e86003c5b5f008c0cb115a67a70bd76a8dfb"
+  },
+  "FaceShadowCasterPS": {
+    "file": "Materials/Face/Passes/ShadowCasterPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "ad354262fb0cacf384701ac255e4343dd6471e062cb10eca38c35b6655b93a98"
+  },
+  "FaceDepthOnlyVS": {
+    "file": "Materials/Face/Passes/DepthOnlyVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "01a7998e02cf6b0b02de9c6cd48b1800b9b25b2d262ebc1e2acfb25d142f2adc"
+  },
+  "FaceDepthOnlyPS": {
+    "file": "Materials/Face/Passes/ShadowCasterPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "ad354262fb0cacf384701ac255e4343dd6471e062cb10eca38c35b6655b93a98"
+  },
+  "FaceDepthNormalsVS": {
+    "file": "Materials/Face/Passes/DepthNormalsVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "f1cd3ce75952f10c8bb68e435d9d6c8ddf7cade3ed11d7404551bc541626bc0a"
+  },
+  "FaceDepthNormalsPS": {
+    "file": "Materials/Face/Passes/DepthNormalsPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "016a0fc1e51eac636de0ff5ac78295c3eb88eb398b7821393ad4354cc57ecdee"
+  },
+  "BodyExtraPrePassVS": {
+    "file": "Materials/Body/Passes/ExtraPrePassVS.slang",
+    "stage": "vertex",
+    "keywords": [
+      "_FORWARD_PLUS"
+    ],
+    "original": "006a6f83198eb6587d6046cd1d649edc1f1487fb2ba1da88f55e5238a98f513c"
+  },
+  "BodyExtraPrePassPS": {
+    "file": "Materials/Body/Passes/ExtraPrePassPS.slang",
+    "stage": "fragment",
+    "keywords": [
+      "_FORWARD_PLUS"
+    ],
+    "original": "f5ce61ecb7ec218262883bb364395f2b398b15775891d1dfcdf564e500ee8f72",
+    "defines": [
+      "SKIN_FACE=0",
+      "SKIN_NPR=0",
+      "SKIN_PREPASS=1"
+    ]
+  },
+  "BodyForwardVS": {
+    "file": "Materials/Body/Passes/ForwardVS.slang",
+    "stage": "vertex",
+    "keywords": [
+      "_FORWARD_PLUS",
+      "_MAIN_LIGHT_SHADOWS_CASCADE",
+      "_LIGHT_LAYERS"
+    ],
+    "original": "1f3392f7ea67ac3985e28a2e3bb63c5bade42279a3a96371acdcd8d86b4242df"
+  },
+  "BodyForwardPS": {
+    "file": "Materials/Body/Passes/ForwardPS.slang",
+    "stage": "fragment",
+    "keywords": [
+      "_FORWARD_PLUS",
+      "_MAIN_LIGHT_SHADOWS_CASCADE",
+      "_LIGHT_LAYERS",
+      "_ADDITIONAL_LIGHT_SHADOWS"
+    ],
+    "original": "641072a0824aad60b2c747904ffd73debb860257c4d0ba49fb3071aaf02ef17b",
+    "stock": {
+      "sha256": "b30e3e343fed07aea392d02b49da920a672848999679974e040e82e2a655d872",
+      "defines": [
+        "SKIN_FACE=0",
+        "SKIN_NPR=0",
+        "SKIN_PREPASS=0"
+      ]
+    },
+    "defines": [
+      "SKIN_FACE=0",
+      "SKIN_NPR=1",
+      "SKIN_PREPASS=0"
+    ]
+  },
+  "BodyShadowCasterVS": {
+    "file": "Materials/Body/Passes/ShadowCasterVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "28fb630b7b636d770a4fe12a1e0249ad148fc5d4826b2ab33177f0c310a91a8a"
+  },
+  "BodyShadowCasterPS": {
+    "file": "Materials/Body/Passes/ShadowCasterPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "9505badd5f935dcde9dd5efb7dcc955e8bfdcedc32b558c2a34a0ea4154d4a58"
+  },
+  "BodyDepthOnlyVS": {
+    "file": "Materials/Body/Passes/DepthOnlyVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "1a52779936e1358fee74f65e4ea24033fc170135e90c8ed75c454cadf29ec07a"
+  },
+  "BodyDepthOnlyPS": {
+    "file": "Materials/Body/Passes/ShadowCasterPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "9505badd5f935dcde9dd5efb7dcc955e8bfdcedc32b558c2a34a0ea4154d4a58"
+  },
+  "BodyDepthNormalsVS": {
+    "file": "Materials/Body/Passes/DepthNormalsVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "b721ec1f5f275426350302521ab08110c117f87149dfc67be8275a7cdebc6f72"
+  },
+  "BodyDepthNormalsPS": {
+    "file": "Materials/Body/Passes/DepthNormalsPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "4d6e0cc08ff5d6c952da5cabfea55403023a38b3478579060dbe9c32b2608ef6"
+  },
+  "ClothExtraPrePassVS": {
+    "file": "Materials/Cloth/Passes/ExtraPrePassVS.slang",
+    "stage": "vertex",
+    "keywords": [
+      "_FORWARD_PLUS",
+      "_BACKFACEBLEND_NONE",
+      "_EMISSIONTYPE_NONE"
+    ],
+    "original": "31923ad847efd3df3a4b2c3d29a6e97cff81abfc7a402b3e0f23543a3f505399"
+  },
+  "ClothExtraPrePassPS": {
+    "file": "Materials/Cloth/Passes/ColorPass.slang",
+    "stage": "fragment",
+    "keywords": [
+      "_FORWARD_PLUS",
+      "_BACKFACEBLEND_NONE",
+      "_EMISSIONTYPE_NONE"
+    ],
+    "original": "d28c3a1da773372d27b9e611a8330355ba45f958aef37fb43f707ef8d94cf786",
+    "defines": [
+      "CLOTH_PREPASS=1"
+    ]
+  },
+  "ClothForwardVS": {
+    "file": "Materials/Cloth/Passes/ForwardVS.slang",
+    "stage": "vertex",
+    "keywords": [
+      "_FORWARD_PLUS",
+      "_BACKFACEBLEND_NONE",
+      "_EMISSIONTYPE_NONE",
+      "_MAIN_LIGHT_SHADOWS_CASCADE",
+      "_LIGHT_LAYERS"
+    ],
+    "original": "cc7406c47c2c60a7141b3dcec8dc295112a63ce03523a567d103087a958bd7cf"
+  },
+  "ClothForwardPS": {
+    "file": "Materials/Cloth/Passes/ColorPass.slang",
+    "stage": "fragment",
+    "keywords": [
+      "_FORWARD_PLUS",
+      "_BACKFACEBLEND_NONE",
+      "_EMISSIONTYPE_NONE",
+      "_MAIN_LIGHT_SHADOWS_CASCADE",
+      "_LIGHT_LAYERS",
+      "_ADDITIONAL_LIGHT_SHADOWS"
+    ],
+    "original": "b0b3c69671293dc2f7b4c11b5a827c956e08c28770d8bb0babda6e94199552c7",
+    "stock": {
+      "sha256": "74cedbf066d7251a0c2e72c7d519af93fd11423767969c7331278fd7b88c0aae",
+      "defines": []
+    },
+    "defines": [
+      "CLOTH_NPR=1"
+    ]
+  },
+  "ClothShadowCasterVS": {
+    "file": "Materials/Cloth/Passes/ShadowCasterVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "848c4c9c925df159c79854f382327da942826430e86102acb8fe2ac0cd281410"
+  },
+  "ClothShadowCasterPS": {
+    "file": "Materials/Cloth/Passes/DepthOnlyPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "38cef9cc7dfd2ace84ed7d65e61be842de59b01438af9257ead730c4f20d90e0",
+    "defines": [
+      "CLOTH_DEPTH_PASS=1"
+    ]
+  },
+  "ClothDepthOnlyVS": {
+    "file": "Materials/Cloth/Passes/DepthOnlyVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "bef664603c0ebaf912981d3ab60f463a183af45953c4aed50e81d8aec5a48015"
+  },
+  "ClothDepthOnlyPS": {
+    "file": "Materials/Cloth/Passes/DepthOnlyPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "38cef9cc7dfd2ace84ed7d65e61be842de59b01438af9257ead730c4f20d90e0",
+    "defines": [
+      "CLOTH_DEPTH_PASS=1"
+    ]
+  },
+  "ClothDepthNormalsVS": {
+    "file": "Materials/Cloth/Passes/DepthNormalsVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "a4907841ac7ed194a66468fdb305e4140f866b89e02c8a537d79cefeab04225c"
+  },
+  "ClothDepthNormalsPS": {
+    "file": "Materials/Cloth/Passes/DepthNormalsPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "c73deabb02b328c696bc66a259f86b6f8192090f95fa645cbb55073247d0de8b",
+    "defines": [
+      "CLOTH_DEPTH_PASS=1"
+    ]
+  },
+  "ClothAlphaExtraPrePassVS": {
+    "file": "Materials/ClothAlpha/Passes/ExtraPrePassVS.slang",
+    "stage": "vertex",
+    "keywords": [
+      "_FORWARD_PLUS",
+      "_BACKFACEBLEND_NONE",
+      "_EMISSIONTYPE_NONE"
+    ],
+    "original": "7b0f32fff59ee1e50a241989d490563634ce19d6a16b842b06e2b426cf85f3ea"
+  },
+  "ClothAlphaExtraPrePassPS": {
+    "file": "Materials/Cloth/Passes/ColorPass.slang",
+    "stage": "fragment",
+    "keywords": [
+      "_FORWARD_PLUS",
+      "_BACKFACEBLEND_NONE",
+      "_EMISSIONTYPE_NONE"
+    ],
+    "original": "6dc8db653deec2a18488d55ae57018f6a704b24dc7daf3712199fea5fb401bab",
+    "defines": [
+      "CLOTH_CUTOUT_LAYOUT=1",
+      "CLOTH_PREPASS=1"
+    ]
+  },
+  "ClothAlphaForwardVS": {
+    "file": "Materials/ClothAlpha/Passes/ForwardVS.slang",
+    "stage": "vertex",
+    "keywords": [
+      "_FORWARD_PLUS",
+      "_BACKFACEBLEND_NONE",
+      "_EMISSIONTYPE_NONE",
+      "_MAIN_LIGHT_SHADOWS_CASCADE",
+      "_LIGHT_LAYERS"
+    ],
+    "original": "81984da12a27be6716a43fa23529dfa41433672508bc0c70df5c6c9984d2b2a8"
+  },
+  "ClothAlphaForwardPS": {
+    "file": "Materials/Cloth/Passes/ColorPass.slang",
+    "stage": "fragment",
+    "keywords": [
+      "_FORWARD_PLUS",
+      "_BACKFACEBLEND_NONE",
+      "_EMISSIONTYPE_NONE",
+      "_MAIN_LIGHT_SHADOWS_CASCADE",
+      "_LIGHT_LAYERS",
+      "_ADDITIONAL_LIGHT_SHADOWS"
+    ],
+    "original": "c4217354d8dda474fc857c310189bb70230cc4ddb272dc5ba35d321ec406ad27",
+    "stock": {
+      "sha256": "a7c8f591be538a8595d145a17e5b6eb94ed945b313b2eae0e9c9b5d3b39f10fc",
+      "defines": [
+        "CLOTH_CUTOUT_LAYOUT=1"
+      ]
+    },
+    "defines": [
+      "CLOTH_CUTOUT_LAYOUT=1",
+      "CLOTH_NPR=1"
+    ]
+  },
+  "ClothAlphaShadowCasterVS": {
+    "file": "Materials/ClothAlpha/Passes/ShadowCasterVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "3902ca4330bff97839a522c86b487499fc27254023776ee8fcc3022945b35a90"
+  },
+  "ClothAlphaShadowCasterPS": {
+    "file": "Materials/Cloth/Passes/ShadowCasterPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "b59ca8a621813b3aad3551461fe61dd5af0ee1bf51fe8d0b8215f9cc692e1095",
+    "defines": [
+      "CLOTH_CUTOUT_LAYOUT=1",
+      "CLOTH_DEPTH_PASS=1"
+    ]
+  },
+  "ClothAlphaDepthOnlyVS": {
+    "file": "Materials/ClothAlpha/Passes/DepthOnlyVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "c89fba97cabb434ba6b3415097f12fdd80a34e7485d8a05608c012b676f704ca"
+  },
+  "ClothAlphaDepthOnlyPS": {
+    "file": "Materials/Cloth/Passes/DepthOnlyPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "37678e1b07c752ccb285ec03160343191c9c82d48397e57632ab66be5a33c065",
+    "defines": [
+      "CLOTH_CUTOUT_LAYOUT=1",
+      "CLOTH_DEPTH_PASS=1"
+    ]
+  },
+  "ClothAlphaDepthNormalsVS": {
+    "file": "Materials/ClothAlpha/Passes/DepthNormalsVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "82cd637c3adf4cc1c73e1b259d4a6adb23f1fa391f040385da1f7538ae29996c"
+  },
+  "ClothAlphaDepthNormalsPS": {
+    "file": "Materials/Cloth/Passes/DepthNormalsPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "65575eeb4d5ddcb1c14af34e439097eee9acc29e35884ed55670fb2ce124ba14",
+    "defines": [
+      "CLOTH_CUTOUT_LAYOUT=1",
+      "CLOTH_DEPTH_PASS=1"
+    ]
+  },
+  "HairExtraPrePassVS": {
+    "file": "Materials/Hair/Passes/ExtraPrePassVS.slang",
+    "stage": "vertex",
+    "keywords": [
+      "_FORWARD_PLUS",
+      "_SWITCHI1_TANGENT",
+      "_MAIN_LIGHT_SHADOWS_CASCADE",
+      "_LIGHT_LAYERS"
+    ],
+    "original": "fd3b5e11d58984c6edf21332eda2bd499be8568d0d32c0fa65ad7d47c525aee6",
+    "stock": {
+      "keywords": [
+        "_FORWARD_PLUS",
+        "_SWITCHI1_TANGENT"
+      ]
+    }
+  },
+  "HairExtraPrePassPS": {
+    "file": "Materials/Hair/Passes/ExtraPrePassPS.slang",
+    "stage": "fragment",
+    "keywords": [
+      "_FORWARD_PLUS",
+      "_SWITCHI1_TANGENT",
+      "_MAIN_LIGHT_SHADOWS_CASCADE",
+      "_LIGHT_LAYERS",
+      "_ADDITIONAL_LIGHT_SHADOWS"
+    ],
+    "original": "8973453286fbcc4f3be7ec2b0bf6e173cfc9ab394560d54ec9e8cd51439ce109",
+    "stock": {
+      "sha256": "5eae56ad8c98495338c87fade0043e8aecab7d4bb1abf7c44a6109dddcbbdc7c",
+      "keywords": [
+        "_FORWARD_PLUS",
+        "_SWITCHI1_TANGENT"
+      ],
+      "defines": [
+        "HAIR_STOCK_BASE=1"
+      ]
+    },
+    "defines": [
+      "HAIR_NPR=1"
+    ]
+  },
+  "HairForwardVS": {
+    "file": "Materials/Hair/Passes/ExtraPrePassVS.slang",
+    "stage": "vertex",
+    "keywords": [
+      "_FORWARD_PLUS",
+      "_SWITCHI1_TANGENT",
+      "_MAIN_LIGHT_SHADOWS_CASCADE",
+      "_LIGHT_LAYERS"
+    ],
+    "original": "fd3b5e11d58984c6edf21332eda2bd499be8568d0d32c0fa65ad7d47c525aee6"
+  },
+  "HairForwardPS": {
+    "file": "Materials/Hair/Passes/ForwardPS.slang",
+    "stage": "fragment",
+    "keywords": [
+      "_FORWARD_PLUS",
+      "_SWITCHI1_TANGENT",
+      "_MAIN_LIGHT_SHADOWS_CASCADE",
+      "_LIGHT_LAYERS",
+      "_ADDITIONAL_LIGHT_SHADOWS"
+    ],
+    "original": "543d52838f068249560b1ddd03d5e3ce57ba3cac769a15788d0654ebce5ec53a",
+    "stock": {
+      "sha256": "abe5a7dc8d48fab0af82a67b35348bde936b18aa7b7c4baf22ea8a79940a3f5b",
+      "defines": []
+    },
+    "defines": [
+      "HAIR_NPR=1"
+    ]
+  },
+  "HairShadowCasterVS": {
+    "file": "Materials/Face/Passes/ShadowCasterVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "843bee9716e734827a4b3a4054f9e86003c5b5f008c0cb115a67a70bd76a8dfb"
+  },
+  "HairShadowCasterPS": {
+    "file": "Materials/Hair/Passes/ShadowCasterPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "c6024addcf568ca45ad17ff21541b868b80e999466fa7800044b478a0ae41fd6"
+  },
+  "HairDepthOnlyVS": {
+    "file": "Materials/Face/Passes/DepthOnlyVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "01a7998e02cf6b0b02de9c6cd48b1800b9b25b2d262ebc1e2acfb25d142f2adc"
+  },
+  "HairDepthOnlyPS": {
+    "file": "Materials/Hair/Passes/DepthOnlyPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "8a9817007bf6b16c01fecaa0ead927ae6e531a443ed241372477a10bda96bbe8"
+  },
+  "HairDepthNormalsVS": {
+    "file": "Materials/Face/Passes/DepthNormalsVS.slang",
+    "stage": "vertex",
+    "keywords": [],
+    "original": "f1cd3ce75952f10c8bb68e435d9d6c8ddf7cade3ed11d7404551bc541626bc0a"
+  },
+  "HairDepthNormalsPS": {
+    "file": "Materials/Hair/Passes/DepthNormalsPS.slang",
+    "stage": "fragment",
+    "keywords": [],
+    "original": "200ff1454a2404fc89ec62ee4d8cd13f855c49305711ed9718c9e5ba7d54f059"
+  }
+}

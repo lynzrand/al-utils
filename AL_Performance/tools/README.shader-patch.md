@@ -27,7 +27,7 @@ With those draw constants and bindings, the Bayer mask is one and sampled alpha 
 Build the opaque control from `MapShadowCaster.slang` and preserve the captured shader signatures with `make_shadow_no_clip.py`.
 
 ```powershell
-cmake -S AL_NPR/shaders/slang -B artifacts/static/map-shaders -G Ninja
+cmake -S AL_NPR/shaders -B artifacts/static/map-shaders -G Ninja
 cmake --build artifacts/static/map-shaders --target MapShadowOpaque
 python AL_Performance/tools/make_shadow_no_clip.py artifacts/bench/rd-map-stock-shaders/10287-ps.dxbc artifacts/static/map-shaders/MapShadowOpaque.dxbc artifacts/static/shadow-caster-no-clip-exact.dxbc
 ```

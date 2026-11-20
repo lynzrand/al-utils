@@ -9,7 +9,7 @@ from build_skin_assets import parts
 from patch_skin_light_shoulder import decode_program, emit
 
 
-SLANG = Path(__file__).resolve().parents[1] / "shaders/slang"
+SLANG = Path(__file__).resolve().parents[1] / "shaders"
 
 
 def find_fxc():
@@ -23,7 +23,7 @@ def find_fxc():
     return max(candidates, key=lambda p: tuple(map(int, p.parents[1].name.split("."))))
 
 
-def compile_entry(entry, defines=(), *, source="BundleEntries.slang", slangc=None, fxc=None):
+def compile_entry(entry, defines=(), *, source="Bundle/BundleEntries.slang", slangc=None, fxc=None):
     """Lower a Slang fragment function and extract its optimized SM5 instructions."""
     with tempfile.TemporaryDirectory() as tmp:
         hlsl = Path(tmp) / (entry + ".hlsl")

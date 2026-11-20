@@ -4,7 +4,9 @@ call "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\v
 if errorlevel 1 exit /b %errorlevel%
 pushd "%~dp0\..\.."
 if not exist artifacts\npr\map-visibility mkdir artifacts\npr\map-visibility
-cmake -S AL_NPR\shaders\slang -B artifacts\npr\map-visibility -G "NMake Makefiles" -DSHADER_TARGET=dxil
+set "cmake_location=-S AL_NPR\shaders -B artifacts\npr\map-visibility"
+if exist artifacts\npr\map-visibility\CMakeCache.txt set "cmake_location=artifacts\npr\map-visibility"
+cmake %cmake_location% -G "NMake Makefiles" -DSHADER_TARGET=dxil
 if errorlevel 1 goto failed
 cmake --build artifacts\npr\map-visibility --target MapLightVisibilityAssembly
 if errorlevel 1 goto failed

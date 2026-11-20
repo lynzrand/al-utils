@@ -16,7 +16,7 @@ from patch_skin_light_shoulder import decode_stage
 
 
 MATERIALS = {76: "Face", 146: "Body", 129: "Hair", 131: "Cloth", 136: "ClothAlpha"}
-MANIFEST = Path(__file__).resolve().parents[1] / "shaders/slang/programs.json"
+MANIFEST = Path(__file__).resolve().parents[1] / "shaders/programs.json"
 
 
 def manifest_stages(tree, material, manifest, stock):

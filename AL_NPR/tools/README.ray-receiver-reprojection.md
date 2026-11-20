@@ -26,7 +26,7 @@ to DXIL for shader model 6.5. Build the six named variants together from the
 repository root with a configured CMake generator.
 
 ```powershell
-cmake -S AL_NPR/shaders/slang -B artifacts/npr/ray-receiver-reprojection -DSHADER_TARGET=dxil
+cmake -S AL_NPR/shaders -B artifacts/npr/ray-receiver-reprojection -DSHADER_TARGET=dxil
 cmake --build artifacts/npr/ray-receiver-reprojection --target receiver-diagnostics
 ```
 
