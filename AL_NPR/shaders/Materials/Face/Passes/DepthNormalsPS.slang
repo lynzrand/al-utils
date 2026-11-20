@@ -1,6 +1,8 @@
 import Materials.Face.DepthMaterial;
 import Surface.DepthCoverage;
 
+/// Writes the normalized interpolated world normal in RGB and zero in A for covered pixels. positionCS.xy is
+/// the raster pixel position.
 [shader("fragment")]
 float4 main(float4 positionCS : SV_Position, float3 normalWS : TEXCOORD0) : SV_Target0
 {

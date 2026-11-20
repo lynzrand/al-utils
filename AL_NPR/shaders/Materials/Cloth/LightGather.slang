@@ -10,19 +10,27 @@ import Lighting.MapLighting;
 import Lighting.SceneLighting;
 #endif
 
+/// Stock diffuse accumulators or the NPR per-light band, gathered for one pixel.
 public struct ClothLights
 {
+    /// Stock additional light weighted by shadow visibility and the clamped normal/light cosine.
     public float3 diffuse;
+    /// Stock additional light using the half-wrapped normal/light cosine.
     public float3 wrapped;
+    /// Stock additional light weighted only by attenuation, used to illuminate the outline.
     public float3 unshaded;
 #ifdef CLOTH_NPR
+    /// NPR sum of per-light toon bands, compressed and floored after traversal.
     public float3 bandColor;
+    /// NPR light directions weighted by band luminance and normalized after traversal.
     public float3 bandDirection;
+    /// Scalar toon weight from the compressed NPR color before the minimum color floor.
     public float band;
 #endif
 };
 
 #ifdef CLOTH_NPR
+/// Adds this light's toon-band RGB and its luminance-weighted direction to the NPR sum.
 void accumulateBand(inout ClothLights lights, float3 color, float3 direction,
                     float3 normalWS, float visibility)
 {
@@ -33,6 +41,7 @@ void accumulateBand(inout ClothLights lights, float3 color, float3 direction,
 }
 #endif
 
+/// Applies the pass's layer and shadow policy, then adds the Unity light to the stock or NPR accumulators.
 void addClothLight(inout ClothLights lights, uint index, float3 positionWS, float3 normalWS, float fade)
 {
     PunctualLight light = getPunctualLight(index, positionWS);
@@ -60,6 +69,7 @@ void addClothLight(inout ClothLights lights, uint index, float3 positionWS, floa
 #endif
 }
 
+/// Visits the directional list and the pixel's Forward+ locals, then resolves the NPR band when enabled.
 public ClothLights gatherClothLights(float3 positionWS, float3 normalWS, float2 screenUV)
 {
     ForwardPlusGrid grid = ForwardPlusGrid(_FPParams0, _FPParams1, _FPParams2.x);

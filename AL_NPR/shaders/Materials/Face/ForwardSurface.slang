@@ -10,20 +10,33 @@ import Surface.SurfaceNormals;
 import Materials.Skin.SurfaceMath;
 import Surface.MaterialColor;
 
+/// Per-pixel face material after painted features, wet normals and probe reflection have been sampled.
 public struct FaceSurface
 {
+    /// Tangent-to-world frame reconstructed from the interpolated mesh basis and handedness.
     public TangentFrame basis;
+    /// Placed face pigments, feature masks and highlight weights.
     public FaceMakeup makeup;
+    /// Painted detail masks and the local tiled liquid normal.
     public FaceDetail detail;
+    /// Surface-to-camera displacement in world units, with distance preserved.
     public float3 eyeOffset;
+    /// World-space surface-to-eye direction, constant across the view for orthographic projection.
     public float3 view;
+    /// Combined fluid and liquid normal transformed to world space before final normalization.
     public float3 bumpWorld;
+    /// Unit world-space shading normal from the combined fluid and liquid slopes.
     public float3 normal;
+    /// Surface RGB after wet reflection, liquid tint and fluid paint.
     public float3 pigment;
+    /// Maximum of lip-line B and spot B for the final face-line blend.
     public float lineCoverage;
+    /// Detail darkness assembled from the painted feature channels, lip line and material contrast.
     public float detailShade;
 }
 
+/// Combines liquid and droplet normals for the probe direction. Local wet coverage controls its mip and
+/// intensity.
 float3 wetFaceReflection(StageInput input, TangentFrame basis, FaceDetail detail, float3 view, float sweatHeight)
 {
     float sweat = sweatHeight * _AseIntensity;
@@ -35,6 +48,7 @@ float3 wetFaceReflection(StageInput input, TangentFrame basis, FaceDetail detail
                              input.positionOS.xy, wetness, coverage);
 }
 
+/// Samples makeup, detailed and procedural wet normals, and line masks before evaluating the face palette.
 public FaceSurface sampleFaceSurface(StageInput input)
 {
     FaceSurface s;
@@ -69,8 +83,11 @@ public FaceSurface sampleFaceSurface(StageInput input)
     return s;
 }
 
+/// Offsets the nose alpha mask by tangent-space view X, then takes the strongest nose, cheek or lip
+/// highlight.
 public float faceGloss(StageInput input, FaceSurface s)
 {
+    // Only the horizontal tangent-space view component shifts the nose gloss relative to the painted nose.
     float parallax = normalize(s.basis.toTangent(s.eyeOffset)).x;
     float2 uv = float2(mad(parallax, -0.0475, input.uv2Uv3.x), input.uv2Uv3.y);
     uv = mad(uv, mad(_NoseGlossScale, 0.4, 0.8), mad(_NoseGlossScale, -0.2, 0.1));

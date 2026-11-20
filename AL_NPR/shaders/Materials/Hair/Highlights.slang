@@ -5,7 +5,7 @@ import Surface.MaterialColor;
 import Surface.SurfaceNormals;
 import Lighting.Reflectance;
 
-// The painted stripe follows both the view in tangent space and the projected view in camera space.
+/// Sample the authored stripe using both the tangent-space view and its projection into camera space.
 float3 samplePaintedStripe(float2 uv, HairSurface s)
 {
     float3 tangentView = float3(dot(s.basis.tangent, s.toCamera), dot(s.basis.bitangent, s.toCamera), dot(s.basis.normal, s.toCamera));
@@ -20,6 +20,7 @@ float3 samplePaintedStripe(float2 uv, HairSurface s)
     return paintedHighlight.Sample(paintedHighlightSampler, location).rgb;
 }
 
+/// Apply the four region wetness controls, wet normal, reflection probe and wet highlight to the strand RGB.
 public float3 wetHair(float3 pigment, HairSurface s, HairInput input, float keyVisibility)
 {
     float2 uv = input.uv1Uv0.zw;
@@ -52,12 +53,21 @@ public float3 wetHair(float3 pigment, HairSurface s, HairInput input, float keyV
     return tintSaturation(saturate(color + strength * direct), 0.8);
 }
 
+/// Painted two-lobe highlight and the pigment it modifies before rim lighting.
 public struct HairStripe
 {
-    public float primary, intensity;
-    public float3 tint, pigment;
+    /// Weight of the primary red-channel painted stripe.
+    public float primary;
+    /// Masked combined strength of the painted primary and secondary lobes.
+    public float intensity;
+    /// RGB tint blended from the primary and secondary highlight colors.
+    public float3 tint;
+    /// Strand RGB after the painted stripe's shadow and color boost.
+    public float3 pigment;
 };
 
+/// Shade the painted red and green lobes, suppress them with detail, and return RGB with the highlight
+/// weights.
 public HairStripe paintStrands(float3 pigment, HairMasks masks, HairSurface s, HairInput input,
                         float keyVisibility, float keyLuma, float stripeGain)
 {
@@ -82,6 +92,7 @@ public HairStripe paintStrands(float3 pigment, HairMasks masks, HairSurface s, H
     return result;
 }
 
+/// Blend a broad edge highlight with the narrow tilted-view silhouette using light-facing and view angle.
 public float hairRim(HairSurface s, HairInput input, float3 rimLight, float faceFacing, float fresnel)
 {
     float3 localLift = input.mainLightOS.xyz * float3(0, 0.3, 0);

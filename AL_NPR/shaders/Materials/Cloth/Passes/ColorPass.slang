@@ -9,6 +9,7 @@ import Materials.Cloth.Pigment;
 import Materials.Cloth.Surface;
 import Surface.MaterialColor;
 
+/// Writes lit cloth RGB and the material's surviving alpha to SV_Target0 after silhouette clipping.
 [shader("fragment")]
 float4 main(ClothInput input) : SV_Target0
 {

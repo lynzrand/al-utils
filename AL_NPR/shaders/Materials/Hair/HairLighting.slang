@@ -1,11 +1,12 @@
+/// Return the unit bisector of the world-space light and view vectors, guarded against opposite directions.
 float3 reflectionHalfVector(float3 lightDirection, float3 viewDirection)
 {
     float3 halfVector = lightDirection + viewDirection;
     return halfVector * rsqrt(max(dot(halfVector, halfVector), 1e-8));
 }
 
-// Slide the painted streak across the strand with the reflected half vector.
-// The caller computes UV gradients before entering the divergent light loop.
+/// Return one light's painted highlight using strand U, a half-vector V offset, and explicit 2D UV gradients.
+/// Compute UV gradients before entering a divergent light loop.
 public float paintedReflection(Texture2D<float4> highlight, SamplerState state,
                               float3 normal, float3 tangent, float3 lightDirection,
                               float3 viewDirection, float strandU, float2 dx, float2 dy)
@@ -18,6 +19,7 @@ public float paintedReflection(Texture2D<float4> highlight, SamplerState state,
     return ((stamp * shoulder) * 1.4) * saturate(dot(normal, lightDirection) * 3.0);
 }
 
+/// Evaluate the analytic anisotropic ribbon highlight from the normal, strand tangent, light, and view.
 public float ribbonReflection(float3 normal, float3 tangent, float3 lightDirection, float3 viewDirection)
 {
     float3 halfVector = reflectionHalfVector(lightDirection, viewDirection);
@@ -30,12 +32,14 @@ public float ribbonReflection(float3 normal, float3 tangent, float3 lightDirecti
     return shape * saturate(3 * dot(normal, lightDirection));
 }
 
+/// Evaluate the narrow half-vector gloss lobe used by the non-ribbon analytic variant.
 public float glossReflection(float3 normal, float3 lightDirection, float3 viewDirection)
 {
     float facing = saturate(dot(normal, reflectionHalfVector(lightDirection, viewDirection)));
     return saturate((facing - 0.91) * 18) * saturate(3 * dot(normal, lightDirection));
 }
 
+/// Compress accumulated RGB streaks and apply highlight RGB, its alpha strength, and the scalar detail mask.
 public float3 finishHairReflection(float3 reflected, float detailMask, float4 highlightTint)
 {
     float3 rgb = 6 * reflected;

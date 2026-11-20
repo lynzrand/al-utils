@@ -1,6 +1,9 @@
-// Each pair of cubic B-spline weights can share a hardware bilinear sample.
-// The same reconstruction feeds coverage and both offset height samples used
-// for the wet normal, so their edges stay registered as the model animates.
+/// Each pair of cubic B-spline weights can share a hardware bilinear sample.
+/// The same reconstruction feeds coverage and both offset height samples used
+/// for the wet normal, so their edges stay registered as the model animates.
+///
+/// Resamples single-mip paint at normalized UV. Packed RGBA and neighboring height taps follow the same
+/// filter.
 public float4 sampleFluidMask(Texture2D<float4> mask, SamplerState linearSampler, float2 uv)
 {
     uint width, height, levels;

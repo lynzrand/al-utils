@@ -6,14 +6,30 @@ import Surface.MaterialColor;
 import Lighting.Reflectance;
 import Surface.SurfaceNormals;
 
+/// Garment pigment and finish before the toon palette, highlights, and line composition.
 public struct ClothPigment
 {
-    public float3 dry, wetTint, wet, specular;
+    /// Dyed pigment after matcaps, finish, reflection, and curvature tint.
+    public float3 dry;
+    /// Dry pigment shifted toward the warm wet tint by the liquid amount.
+    public float3 wetTint;
+    /// Wet-tinted pigment after its reflected and specular sheen.
+    public float3 wet;
+    /// Dry finish highlight RGB, converted to luminance for the rim blend.
+    public float3 specular;
+    /// First detail texture at UV0. Green adjusts the finish, blue shapes lines and alpha, and alpha suppresses the rim.
     public float4 detail;
+    /// Dyed base texture RGB and its original silhouette alpha.
     public float4 base;
-    public float lineDetail, wetBlend, sheer;
+    /// Green channel of the second detail map, used in the painted-line blend.
+    public float lineDetail;
+    /// Smoothed liquid amount for the warm tint and the wet highlight.
+    public float wetBlend;
+    /// Regional sheer weight derived from red detail, used by the wet normal and cutout silhouette.
+    public float sheer;
 };
 
+/// Returns four layer weights from overlapping or exclusive RGB masks and the residual fourth region.
 float4 matcapRegions(float3 mask, float overrideAmount)
 {
     float3 exclusive = float3(saturate(mask.r - max(mask.g, mask.b)), saturate(mask.g - mask.b), mask.b);
@@ -21,8 +37,8 @@ float4 matcapRegions(float3 mask, float overrideAmount)
     return float4(regions, 1 - saturate(dot(regions, 1)));
 }
 
-// Apply each layer to the preceding layer's result. Even a masked-out layer
-// can desaturate that result through its authored alpha and power.
+/// Apply each layer to the preceding layer's result. Even a masked-out layer
+/// can desaturate that result through its authored alpha and power.
 float3 addMatcap(float3 color, float4 layer, float region, float power)
 {
     float3 offset = layer.rgb - 0.5;
@@ -32,12 +48,13 @@ float3 addMatcap(float3 color, float4 layer, float region, float power)
     return lerp(result, dot(result, luminance601), 0.25 * amount);
 }
 
+/// Samples the specified texture-array slice using the camera's matcap mip bias.
 float4 sampleMatcap(float2 uv, float slice)
 {
     return _TexTAMatcap.SampleBias(matcapSampler, float3(uv, slice), mipAndAlpha.x);
 }
 
-// Object-space Y and Z partition the cloth into front/back and top/bottom.
+/// Object-space Y and Z partition the cloth into front/back and top/bottom.
 float4 clothFinishZones(float3 positionOS)
 {
     float2 blend = saturate(mad(positionOS.zy + float2(0.8, 1), float2(1.8181818, 1.1428572), -1));
@@ -45,6 +62,7 @@ float4 clothFinishZones(float3 positionOS)
                   max(blend.y - blend.x, 0), 1 - max(blend.x, blend.y));
 }
 
+/// Combines wet normals, reflection, and key highlights. Also returns the sheerness used for cutout coverage.
 float3 wetSheen(ClothInput input, ClothFrame frame, ClothSurface surface, ClothKey key, float3 tint, out float sheerStrength)
 {
     float2 uv = input.uv.xy;
@@ -77,6 +95,7 @@ float3 wetSheen(ClothInput input, ClothFrame frame, ClothSurface surface, ClothK
     return saturate(mad(sheen, wetArea, base));
 }
 
+/// Builds dyed pigment, layers its matcaps and finish, then computes the dry and wet color responses.
 public ClothPigment clothPigment(ClothInput input, ClothFrame frame, ClothSurface surface, ClothKey key)
 {
     ClothPigment p;

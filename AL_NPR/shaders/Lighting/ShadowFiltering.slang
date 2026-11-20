@@ -1,5 +1,5 @@
-// The fixed offsets are atlas texels. Preserve the comparison sampler's
-// hardware filtering and apply the tent weights before the toon palette.
+/// Return the normalized 3 × 3 tent-weighted depth comparison. XY is atlas UV and Z is receiver depth.
+/// Offsets are measured in atlas texels and preserve hardware comparison filtering.
 public float faceVisibility(Texture2D<float4> atlas, SamplerComparisonState compare,
                             float3 uvz)
 {

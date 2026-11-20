@@ -14,42 +14,87 @@ import Lighting.Reflectance;
 #define FILTER_BODY_OIL 0
 #endif
 #if FILTER_BODY_OIL && SKIN_NPR && !SKIN_PREPASS
+/// Reconstructs the body paint and its height taps with the release filter.
 typealias BodyFluidFilter = CubicFluidFilter;
 #else
+/// Samples paint and its height taps with the original material sampler.
 typealias BodyFluidFilter = LinearFluidFilter;
 #endif
 
+/// Per-pixel material state shared by the body palette, highlight and outline calculations.
 public struct BodySurface
 {
+    /// World-space tangent frame built from the interpolated mesh normal and tangent.
     public TangentFrame basis;
-    public float3 view, key, cameraOffset;
-    public float3 normalWS, unitNormal, artisticNormal, dryNormal;
-    public float3 substrate, pigment, paintedPigment, beadReflection;
-    public float4 detail, regions;
-    public float bustMask, flatten, liquid, hairAlpha, nippleMask, dent, lineMask;
+    /// World-space direction toward the camera, constant across an orthographic view.
+    public float3 view;
+    /// Normalized world-space direction of the selected skin key.
+    public float3 key;
+    /// Surface-to-camera vector in world units, with distance retained.
+    public float3 cameraOffset;
+    /// Layered tangent-space bumps transformed to world space before normalization.
+    public float3 normalWS;
+    /// Normalized world-space form of the layered shading normal.
+    public float3 unitNormal;
+    /// World-space shading normal blended toward the chest-flattened normal by the regional mask.
+    public float3 artisticNormal;
+    /// Normalized world-space normal from the base and nipple bumps before wetness.
+    public float3 dryNormal;
+    /// Wet skin RGB including probe reflection and specular, before applying painted fluid.
+    public float3 substrate;
+    /// Substrate RGB with saturation scaled to 0.8 for the dry side of the painted-fluid blend.
+    public float3 pigment;
+    /// Substrate RGB shaded through the fluid paint, including scattering and highlight.
+    public float3 paintedPigment;
+    /// Decoded low-mip reflection weighted by the height and slope of sweat droplets.
+    public float3 beadReflection;
+    /// Body detail slice 0. R masks lines, G gates creases, B adjusts shadow contrast and A selects the bust.
+    public float4 detail;
+    /// Overlay slice 3. R gates painted shine, G selects chest flattening and B modulates matcap density.
+    public float4 regions;
+    /// Chest region weight remapped from the A channel of the first detail slice.
+    public float bustMask;
+    /// Regional weight for blending the shading normal toward the flattened chest normal.
+    public float flatten;
+    /// Local wet coverage after smoothing the tiled liquid pattern and the four body-region levels.
+    public float liquid;
+    /// Under-hair texture opacity multiplied by its material tint alpha.
+    public float hairAlpha;
+    /// Nipple A times material opacity and nipple B. Suppresses the rim on that region.
+    public float nippleMask;
+    /// Dent-height mask used for palette darkening and prepass outline suppression.
+    public float dent;
+    /// Discrete painted line coverage gated by detail slice 1 and _linetexon.
+    public float lineMask;
 };
 
+/// Samples the requested overlay-array slice at normalized UV with the global mip bias.
 float4 sampleExtra(float2 uv, float slice)
 {
     return _TexEX.SampleBias(extraArraySampler, float3(uv, slice), _GlobalMipBias.x);
 }
 
+/// Samples the requested detail-array slice at normalized UV with the global mip bias.
 float4 sampleDetail(float2 uv, float slice)
 {
     return _Detail_mask_01.SampleBias(detailArraySampler, float3(uv, slice), _GlobalMipBias.x);
 }
 
+/// Transforms a world-space direction to view space using the view matrix's linear columns.
 public float3 toView(float3 direction)
 {
     return mad(unity_MatrixV2.xyz, direction.z,
                mad(unity_MatrixV0.xyz, direction.x, unity_MatrixV1.xyz * direction.y));
 }
 
+/// Normalizes a vector with a finite reciprocal-square-root factor for zero length.
 public float3 unitDirection(float3 v)
 {
     return v * rsqrt(max(dot(v, v), 1.1754944e-38));
 }
 
+/// Flattens a world-space normal along the object's X and Y axes, then returns the normalized world
+/// direction.
 float3 flattenedChestNormal(float3 normal)
 {
     float3 local = worldToObject0.xyz * normal.x + worldToObject1.xyz * normal.y + worldToObject2.xyz * normal.z;
@@ -57,11 +102,14 @@ float3 flattenedChestNormal(float3 normal)
     return unitDirection(objectToWorld0.xyz * local.x + objectToWorld1.xyz * local.y + objectToWorld2.xyz * local.z);
 }
 
+/// Adds two tangent-space normal slopes and normalizes the result for the next layer.
 float3 blendBumps(float3 a, float3 b)
 {
     return normalize(combineNormalSlopes(a, b));
 }
 
+/// Returns a tangent-space normal from three neighboring nipple-height samples and outputs the center RGBA
+/// pigment sample.
 float3 sampleNipple(float2 uv, out float4 pigment)
 {
     float2 size = mad(_Nip_size, 0.27, float2(0.54, 0.04000002));
@@ -76,16 +124,20 @@ float3 sampleNipple(float2 uv, out float4 pigment)
     return normalize(float3(-slope * (pigment.a * _Nip_color_01.a * 10), 1));
 }
 
+/// Applies four regional liquid levels to the tiled pattern. uv is mesh UV0 and tiledUV includes
+/// _LiquidTiling.
 float liquidCoverage(float2 uv, float2 tiledUV)
 {
     float2 pattern = smoothstep(0.1, 0.6, sampleExtra(tiledUV, 1).gr);
     float3 mask = sampleExtra(uv, 0).rgb;
+    // Red and green differences select the two front regions. Blue and red/green overlap select the back.
     float4 zones = float4(saturate(mask.r - mask.g), saturate(mask.g - mask.r), mask.b, mask.g * mask.r);
     float4 levels = float4(_liquidftop, _liquidfbot, _liquidbtop, _liquidbbot);
     float4 fill = min(zones, max(pattern.r * saturate(levels - 1), pattern.g * levels));
     return saturate(dot(fill, float4(1)));
 }
 
+/// Fills region, line, bust and dent masks, returning the overlay color slice used to tint the base pigment.
 float4 sampleBodyMasks(inout BodySurface s, StageInput input, float2 uv)
 {
     s.detail = sampleDetail(uv, 0);
@@ -102,12 +154,17 @@ float4 sampleBodyMasks(inout BodySurface s, StageInput input, float2 uv)
     return detailColor;
 }
 
+/// Wet-surface terms carried from normal construction to pigment shading.
 struct WetBody
 {
+    /// Animated droplet height scaled by the material's sweat intensity.
     float sweat;
+    /// World-space normal combining liquid and droplet slopes for reflection and wet specular.
     float3 reflectionNormal;
 };
 
+/// Builds the dry, wet and art-directed shading normals. Returns droplet strength and the normal for probe
+/// reflections.
 WetBody sampleBodyNormals(inout BodySurface s, StageInput input, float3 fluidNormal, out float4 nipple)
 {
     WetBody wet;
@@ -130,6 +187,7 @@ WetBody sampleBodyNormals(inout BodySurface s, StageInput input, float3 fluidNor
     float3 beadShape = s.basis.toTangent(sweatNormalWS(input.positionWS.xyz, s.basis.normal, height, 0.2));
     s.beadReflection = max(height - saturate(bead.y), 0) * decodeProbe(unity_SpecCube0.SampleLevel(
         samplerunity_SpecCube0, reflect(-s.view, s.basis.toWorld(bead)), 0.97800004), specCubeHDR);
+    // Preserve the order of the droplet shape, its derivative normal, and the painted fluid normal.
     float3 layered = blendBumps(blendBumps(lerp(wetNormal, beadShape, sweat * 4), bead), fluidNormal);
     s.normalWS = s.basis.toWorld(layered);
     s.unitNormal = normalize(s.normalWS);
@@ -140,6 +198,8 @@ WetBody sampleBodyNormals(inout BodySurface s, StageInput input, float3 fluidNor
     return wet;
 }
 
+/// Populates the underlying and fluid-painted pigment using sampled nipple and detail layers, wet response
+/// and key visibility.
 void sampleBodyPigment(inout BodySurface s, StageInput input, float4 detailColor, float4 nipple,
                        FluidLayer fluid, WetBody wet, float visibility)
 {
@@ -165,6 +225,8 @@ void sampleBodyPigment(inout BodySurface s, StageInput input, float4 detailColor
     s.paintedPigment = skinFluidPigment().apply(substrate, fluid.paint, facingAway, dot(fluidNormal, normalize(toView(s.cameraOffset))));
 }
 
+/// Samples the body material at one fragment, carrying normals, wetness and painted masks into the lighting
+/// stage.
 public BodySurface sampleBody(StageInput input, float visibility)
 {
     BodySurface s = { TangentFrame(input.normalWS, input.tangentWS) };

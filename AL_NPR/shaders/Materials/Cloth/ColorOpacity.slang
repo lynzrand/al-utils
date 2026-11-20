@@ -3,6 +3,7 @@ import Materials.Cloth.FabricSampling;
 import Materials.Cloth.Pigment;
 import Surface.Coverage;
 
+/// Tests coverage for the color pass and returns the surviving material alpha for the render target.
 public float colorOpacity(float2 positionCS, float4 uv, ClothPigment pigment, float wetness)
 {
     float detail = pigment.detail.b;

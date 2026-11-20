@@ -10,6 +10,7 @@ import Materials.Hair.Lights;
 import Materials.Hair.Palette;
 import Materials.Hair.Highlights;
 
+/// Combine the shadow tint, lit ramp, and soft probe with the view-dependent strand pigment.
 float3 shadeHairPigment(float3 pigment, float rim, HairSurface s, HairKey k, HairToon toon)
 {
     float3 probeShade = mad(probe.evaluate(s.shadingNormal * 0.3), 0.7, 0.3);
@@ -27,6 +28,7 @@ float3 shadeHairPigment(float3 pigment, float rim, HairSurface s, HairKey k, Hai
     return saturate(toon.lit * shadow * shaded + k.softProbe * toon.ambientMix);
 }
 
+/// Tint backlighting with strand RGB and use the color mask to shape the transmission bias.
 float3 hairTransmission(HairSurface s, HairKey k, HairMasks masks, float3 pigment, float visibility)
 {
     float3 key = max(mainLightColor.rgb, 0);
@@ -39,6 +41,7 @@ float3 hairTransmission(HairSurface s, HairKey k, HairMasks masks, float3 pigmen
                     (backLight * (key * saturate(tintSaturation(color, 2))))) * _TestSSS);
 }
 
+/// Add painted highlights, silhouette rim, and transmission, then apply the material's brightness cap.
 float3 finishHairPalette(float3 pigment, HairStripe stripe, HairSurface s, HairInput input,
                          HairMasks masks, HairKey k, HairToon toon, float visibility, float rim)
 {
@@ -68,6 +71,8 @@ typealias HairResponse = ToonHairResponse;
 typealias HairResponse = StockHairResponse;
 #endif
 
+/// Return linear lit RGB and ordered coverage alpha. The base pass selects unit alpha and Forward uses tip
+/// alpha.
 public float4 shadeHair(HairInput input, bool opaqueBase)
 {
     HairSurface surface = makeHairSurface(input);

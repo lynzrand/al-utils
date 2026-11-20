@@ -1,11 +1,24 @@
-// UnityPerDraw stores the three linear SH vectors at c25, the three
-// quadratic vectors at c28 and the final RGB coefficient at c31.
+/// UnityPerDraw stores the three linear SH vectors at c25, the three
+/// quadratic vectors at c28 and the final RGB coefficient at c31.
 public struct SHCoefficients
 {
-    public float4 ar, ag, ab;
-    public float4 br, bg, bb;
+    /// Red-channel linear SH coefficients for normal X, Y, Z, followed by the constant term.
+    public float4 ar;
+    /// Green-channel linear SH coefficients for normal X, Y, Z, followed by the constant term.
+    public float4 ag;
+    /// Blue-channel linear SH coefficients for normal X, Y, Z, followed by the constant term.
+    public float4 ab;
+    /// Red-channel quadratic SH coefficients for XY, YZ, ZZ, and ZX.
+    public float4 br;
+    /// Green-channel quadratic SH coefficients for XY, YZ, ZZ, and ZX.
+    public float4 bg;
+    /// Blue-channel quadratic SH coefficients for XY, YZ, ZZ, and ZX.
+    public float4 bb;
+    /// RGB coefficients for X squared minus Y squared. W is unused by the evaluator.
     public float4 c;
 
+    /// Evaluate Unity's linear and quadratic SH polynomials without normalizing the supplied world-space
+    /// vector.
     public float3 evaluate(float3 normal)
     {
         float4 linear = float4(normal, 1);

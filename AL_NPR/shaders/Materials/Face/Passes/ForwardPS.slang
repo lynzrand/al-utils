@@ -7,6 +7,8 @@ import Materials.Face.ForwardSurface;
 import Materials.Skin.Frame;
 import Materials.Skin.Lighting;
 
+/// Shades a covered face fragment into HDR RGB. Alpha carries coverage when alpha-to-mask is available, and
+/// one otherwise.
 [shader("fragment")]
 float4 main(StageInput input) : SV_Target0
 {

@@ -1,4 +1,5 @@
-// Ordered 4x4 coverage pattern used by the game across color and depth passes.
+/// Ordered 4x4 coverage pattern used by the game across color and depth passes.
+/// Bayer ranks 1 through 16 in row-major order for a repeating 4 × 4 pixel cell.
 public static const float coveragePattern[16] = {
      1, 9,  3, 11,
     13, 5, 15,  7,
@@ -6,8 +7,9 @@ public static const float coveragePattern[16] = {
     16, 8, 14,  6
 };
 
-// The render-target scale/bias and projection sign determine the screen-space
-// orientation of the Bayer cell, including when drawing into a shadow atlas.
+/// The render-target scale/bias and projection sign determine the screen-space
+/// orientation of the Bayer cell, including when drawing into a shadow atlas.
+/// Convert rasterized pixel XY to a Bayer threshold, including the target scale/bias and projection Y flip.
 public float ditherThreshold(float2 positionCS, float2 screenSize, float2 scaleBias, float projectionSign)
 {
     float2 uv = (1 / screenSize) * positionCS;
@@ -18,11 +20,14 @@ public float ditherThreshold(float2 positionCS, float2 screenSize, float2 scaleB
     return coveragePattern[min(cell.y * 4 + cell.x, 15u)] / 16.0;
 }
 
+/// Return whether the saturated opacity reaches the ordered threshold, retaining the game's slight upward
+/// scale.
 public bool passesDither(float opacity, float threshold)
 {
     return saturate(opacity * 1.00001) >= threshold;
 }
 
+/// Discard a fragment below the pass cutoff. Alpha-to-mask targets use the screen-space opacity derivatives.
 public void clipCoverage(float opacity, float cutoff, bool alphaToMask)
 {
     float delta = opacity - cutoff;
@@ -34,8 +39,10 @@ public void clipCoverage(float opacity, float cutoff, bool alphaToMask)
     if (delta < 0) discard;
 }
 
-// The red and blue channels are paired across the two garments. Green
-// selects each garment's coverage ceiling. The material switches are rounded.
+/// The red and blue channels are paired across the two garments. Green
+/// selects each garment's coverage ceiling. The material switches are rounded.
+/// Combine the rounded garment switches with top-R/bottom-B and top-B/bottom-R visibility masks and their
+/// green ceilings.
 public float clothingMask(float3 top, float3 bottom, float topSetting, float bottomSetting)
 {
     float topSwitch = round(topSetting);

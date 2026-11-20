@@ -3,29 +3,42 @@ import Surface.Coverage;
 // Binding and interpolator layout recovered from the captured SM5 ShadowCaster.
 cbuffer CameraConstants : register(b0)
 {
+    /// XY are the raster target width and height in pixels for the Bayer pattern.
     float4 TargetSize : packoffset(c3);
+    /// Z enables derivative-smoothed alpha clipping when the material cutoff is positive.
     float4 MsaaState : packoffset(c4);
+    /// X gives the projection flip sign used to orient screen-space dither.
     float4 ProjectionState : packoffset(c22);
+    /// XY are the render target Y scale and bias used by ditherThreshold.
     float4 ViewportTransform : packoffset(c27);
 };
 
 cbuffer MaterialConstants : register(b1)
 {
+    /// Base-map UV tiling in XY and offset in ZW.
     float4 UvTransform : packoffset(c0);
+    /// A scales sampled opacity before the mask and cutoff tests. This pass ignores RGB.
     float4 BaseColor : packoffset(c1);
+    /// X controls dither fade and W is the alpha cutoff. YZ are unused here.
     float4 FadeAndCutoff : packoffset(c5);
 };
 
+/// The shadow silhouette reads alpha after applying UvTransform.
 Texture2D<float4> BaseMap : register(t0);
+/// Sampler bound to the silhouette's base map.
 SamplerState BaseSampler : register(s0);
 
 struct Interpolators
 {
+    /// Rasterized pixel coordinates in XY select the screen-space Bayer cell.
     float4 position : SV_Position;
+    /// World position carried by the captured signature and unused by the shadow fragment.
     float3 unusedWorldPosition : TEXCOORD0;
+    /// XY supply the base-map coordinates. The fragment does not read ZW.
     float4 uv : TEXCOORD1;
 };
 
+/// Discards uncovered fragments so the depth target receives only the silhouette. The color return is zero.
 [shader("fragment")]
 float4 main(Interpolators input) : SV_Target
 {

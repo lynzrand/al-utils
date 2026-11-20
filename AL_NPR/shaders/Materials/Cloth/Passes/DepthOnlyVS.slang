@@ -2,6 +2,7 @@ import Materials.Cloth.DentMaterial;
 import Geometry.DentedDepthOnly;
 import Geometry.DentedMesh;
 
+/// Emits the dented clip position and both coverage UVs for the depth pass.
 [shader("vertex")]
 DepthOutput main(DentedMeshInput input)
 {

@@ -7,22 +7,37 @@ import Lighting.Reflectance;
 import Surface.MaterialColor;
 import Lighting.ToonPalette;
 
+/// World-space key and derived directions and weights for the face ramp, rim and backscatter.
 public struct FaceKey
 {
+    /// RGB controlling key exposure and the stock-style palette response.
     public float3 color;
+    /// Normalized world-space key before changing its sign for face orientation.
     public float3 direction;
+    /// View-conditioned key direction used to compute direct diffuse facing.
     public float3 diffuseDirection;
+    /// View-conditioned direction used to address the artist ramp and tint its shadow.
     public float3 rampDirection;
+    /// View-conditioned direction used to orient grazing highlights and backscatter.
     public float3 rimDirection;
+    /// Exposure and ramp parameters derived from the key RGB.
     public PaletteLight palette;
+    /// Shadow visibility for the stock main light. The NPR key supplies one.
     public float visibility;
+    /// Remapped key visibility, blended toward 0.7 as key presence falls.
     public float toonVisibility;
+    /// Dot product of the face shading normal and the diffuse direction.
     public float facing;
+    /// Dot product of the shading normal and the ramp direction.
     public float rampFacing;
+    /// Thresholded diffuse facing multiplied by the remapped key visibility.
     public float diffuseWeight;
+    /// Two clamped remappings of ramp facing. Y supplies the half-Lambert factor for key bounce.
     public float2 wrap;
 }
 
+/// Builds the face's light directions, cascade visibility, ramp coordinates and wrapped factors for this
+/// pixel.
 public FaceKey faceKey(StageInput input, FaceSurface s)
 {
     FaceKey key;
@@ -45,12 +60,17 @@ public FaceKey faceKey(StageInput input, FaceSurface s)
     return key;
 }
 
+/// Two independent silhouette weights gated by the face detail masks.
 public struct FaceRim
 {
+    /// Main silhouette weight used to restore HDR highlights and tint the palette.
     public float outer;
+    /// Detail-masked grazing accent scaled by key visibility and pigment brightness.
     public float secondary;
 }
 
+/// Evaluates a broad and sharp silhouette response and a softer grazing accent gated by view, mask and face
+/// orientation.
 public FaceRim faceRim(StageInput input, FaceSurface s, FaceKey k)
 {
     float3 offset = abs(s.eyeOffset) - input.normalOS;
@@ -78,6 +98,7 @@ public FaceRim faceRim(StageInput input, FaceSurface s, FaceKey k)
     return result;
 }
 
+/// Returns the colored backlight term from the key, bent normal and artist subsurface strength.
 public float3 faceSubsurface(FaceSurface s, FaceKey k)
 {
     float3 key = max(k.color, 0);
@@ -90,6 +111,7 @@ public float3 faceSubsurface(FaceSurface s, FaceKey k)
     return saturate((saturate(dot(transmission, luminance709) * 2) * (wrap * (back * (transmission * tint)))) * _TestSSS);
 }
 
+/// Derives the shadow color from the painted head base in HSV, then blends the artist shade and liquid tints.
 float3 skinShadowPigment(FaceSurface s)
 {
     float3 hsv = rgbToHSV(s.makeup.basePigment);
@@ -100,6 +122,7 @@ float3 skinShadowPigment(FaceSurface s)
     return saturate(lerp(tint, float3(0.9049558, 0.8495964, 0.6682819), s.detail.liquid));
 }
 
+/// Applies view-space shading and detail occlusion to the pigment, and returns the shadow-tinted base RGB.
 float3 faceMatcap(FaceSurface s, FaceRim rim, float chromaMask, float shadeMask, float3 shadowPigment)
 {
     float edge = grazingRim(s.normal, s.view + float3(0, 0.2, 0), 1.5);
@@ -123,14 +146,21 @@ float3 faceMatcap(FaceSurface s, FaceRim rim, float chromaMask, float shadeMask,
     hsv.y = min(saturationOf(occluded) + 0.1, max(hsv.y, 0));
     return hsvToRGB(hsv);
 }
+/// Shaded face color and lighting terms for the final HDR composition.
 public struct FacePalette
 {
+    /// Lit, highlight-tinted RGB before subsurface, bounce, and line composition.
     public float3 color;
+    /// Per-draw spherical harmonic RGB evaluated at the shading normal for the final fill.
     public float3 ambient;
+    /// Colored bounce and key contribution added through the pigment mask.
     public float3 bounce;
+    /// Pigment-contrast weight used for occlusion and secondary rim highlights.
     public float chromaMask;
 }
 
+/// Combines the lamp ramp, probe, matcap and painted highlights, returning keyed RGB and separate ambient and
+/// bounce terms.
 public FacePalette facePalette(FaceSurface s, FaceKey k, FaceRim rim, SkinLights lights, float gloss)
 {
     float chromaMask = pigmentContrast(s.pigment);
@@ -140,6 +170,7 @@ public FacePalette facePalette(FaceSurface s, FaceKey k, FaceRim rim, SkinLights
     float shade = -3 * (lerp(_mdGShadeControle, 1, s.detail.mask.b) * (shadowPower * shadeMask));
     float ramp = max(min(min(shade, 0), (shadowPower * s.detail.mask.b) * -3), -1)
                + k.palette.rampCoordinate(k.rampFacing);
+    // Stock shifts the ramp coordinate with local diffuse. NPR keeps the ramp tint and drives weight with its band.
     float localLight = dot(lights.diffuse, luminance709);
     float rampSample = _Lamp.Sample(sampler_Lamp, float2(saturate(ramp + localLight))).b;
     float direct = lights.paletteWeight(saturate(mad(k.diffuseWeight, 1 - s.detail.secondary.g, localLight)));

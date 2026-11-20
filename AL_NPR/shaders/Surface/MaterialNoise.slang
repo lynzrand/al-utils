@@ -1,10 +1,11 @@
-// Value noise used to distort the painted liquid mask. Match the game's
-// corner interpolation order so the mip-free wet normal follows the mask.
+/// Hash a grid-cell coordinate to the deterministic corner value used by the painted liquid noise.
+/// Keep the corner interpolation order consistent with the game so the wet normal follows the mask.
 float hashCell(float2 cell)
 {
     return frac(sin(dot(cell, float2(12.9898, 78.233))) * 43758.547);
 }
 
+/// Interpolate the four hashed corners around UV with cubic weights along X and Y.
 public float valueNoise(float2 uv)
 {
     float2 cell = floor(uv);
@@ -18,6 +19,7 @@ public float valueNoise(float2 uv)
     return mad(low.y, row0, high.y * row1);
 }
 
+/// Blend three grid-noise frequencies for distortion of the fluid mask and its height samples.
 public float fluidNoise(float2 uv)
 {
     float fine = valueNoise(uv);
@@ -26,8 +28,8 @@ public float fluidNoise(float2 uv)
     return mad(coarse, 0.5, mad(fine, 0.125, medium * 0.25));
 }
 
-// Each grid cell contains one animated sweat droplet. The material combines
-// the nearest two half-squared distances to form its height and wet-normal mask.
+/// Return the nearest and second-nearest half-squared distances to animated droplet centers around this cell.
+/// The material combines the two distances for its height and wet-normal mask.
 public float2 sweatCellDistances(float2 cell, float2 localUV, float phase)
 {
     float2 nearest = 8;

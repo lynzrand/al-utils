@@ -14,11 +14,15 @@ import Lighting.PunctualShadows;
 #endif
 #if SKIN_NPR
 import Lighting.MapLighting;
+/// Compiled skin response for this material and pass, selected before light traversal.
 public typealias SkinLights = ToonSkinResponse<SKIN_FACE != 0>;
 #else
+/// Compiled skin response for this material and pass, selected before light traversal.
 public typealias SkinLights = StockSkinResponse<SKIN_PREPASS != 0>;
 #endif
 
+/// Fetches one absolute Unity light index, resolves its layer, attenuation and pass-specific shadow, then
+/// updates the response.
 void accumulatePunctualSkin<T : ISkinLightResponse>(
     inout T sum, uint index, float3 positionWS, float3 normal, float3 bandNormal, float shadowFade)
 {
@@ -39,6 +43,7 @@ void accumulatePunctualSkin<T : ISkinLightResponse>(
     sum.addPunctual(light, visibility, normal, bandNormal);
 }
 
+/// Traverses leading directionals and the pixel's Forward+ cluster. Both normal arguments are in world space.
 public SkinLights evaluateSkinLights(StageInput input, float3 normal, float3 bandNormal)
 {
     ForwardPlusGrid grid = ForwardPlusGrid(_FPParams0, _FPParams1, _FPParams2.x);
@@ -73,6 +78,7 @@ public SkinLights evaluateSkinLights(StageInput input, float3 normal, float3 ban
     return sum;
 }
 
+/// Returns main-light RGB in stock or a neutral key intensity from the diffuse probe in NPR.
 public float3 skinKeyColor()
 {
 #if SKIN_NPR
@@ -83,6 +89,8 @@ public float3 skinKeyColor()
 #endif
 }
 
+/// Returns the world-space key vector from the main light or the probe's first-order coefficients. Normalize
+/// before use.
 public float3 skinKeyDirection()
 {
 #if SKIN_NPR
@@ -94,6 +102,7 @@ public float3 skinKeyDirection()
 #endif
 }
 
+/// Samples the stock main cascade at a world position. Outline and NPR keys use full visibility.
 public float skinMainVisibility(float3 positionWS)
 {
 #if SKIN_NPR || SKIN_PREPASS

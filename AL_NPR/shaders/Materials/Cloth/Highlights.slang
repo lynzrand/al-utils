@@ -6,12 +6,22 @@ import Materials.Cloth.Surface;
 import Surface.MaterialColor;
 import Lighting.Reflectance;
 
+/// Primary rim, detail mask, and grazing weights reused in cloth composition.
 public struct ClothRim
 {
-    public float amount, mask, verticalFade, logViewGrazing;
+    /// Masked, front-face primary rim strength after band lighting.
+    public float amount;
+    /// Remaining rim visibility after applying green and alpha detail suppression.
+    public float mask;
+    /// Weight derived from the world normal's Y component.
+    public float verticalFade;
+    /// Base-two logarithm of clamped view grazing, reused for several rim exponents.
+    public float logViewGrazing;
+    /// View-offset grazing term that blends the ambient probe into matcap shading.
     public float viewRim;
 };
 
+/// Builds the wide and narrow rim from mapped normals, then applies the detail mask and front-face response.
 public ClothRim clothRim(ClothInput input, ClothFrame frame, ClothKey key, ClothPalette palette, ClothPigment pigment)
 {
     ClothRim rim;
@@ -40,6 +50,7 @@ public ClothRim clothRim(ClothInput input, ClothFrame frame, ClothKey key, Cloth
     return rim;
 }
 
+/// Shades the fluid texture's shadow and highlight bands and blends them over wet garment pigment.
 public float3 fluidPigment(ClothFrame frame, ClothKey key, ClothSurface surface, ClothPigment p)
 {
     float3 fluid = lerp(surface.fluid.rgb, p.wet, _FluidTransmittance);

@@ -5,14 +5,38 @@ import Materials.Cloth.Pigment;
 import Surface.MaterialColor;
 import Lighting.ToonPalette;
 
+/// Material colors and angular blend weights shared by the base, rim, and additive lighting stages.
 public struct ClothPalette
 {
-    public float3 tint, shadow, ambient, rimLight;
-    public float baseMix, ambientWeight, ramp, lightFacing, viewGrazing, highlight;
-    public float3 rimDirection, hdrBoost;
+    /// Pigment-derived overlay tint with the wet layer's warm shift.
+    public float3 tint;
+    /// Exposed shadow RGB after the authored shadow color and lamp ramp.
+    public float3 shadow;
+    /// Palette fill tint from the key and per-draw ambient probe.
+    public float3 ambient;
+    /// Wet pigment tint modulated by ambient light for the rim blend.
+    public float3 rimLight;
+    /// Strength of the palette tint applied directly to the shaded base pigment.
+    public float baseMix;
+    /// Strength of the additive ambient probe fill under the material shadow.
+    public float ambientWeight;
+    /// Lamp ramp blend between soft and hard overlays, floored to one half.
+    public float ramp;
+    /// Signed cosine between the mapped normal and the palette ramp direction.
+    public float lightFacing;
+    /// One minus the cosine between the mapped normal and view direction.
+    public float viewGrazing;
+    /// Fresnel and view-space normal weight that fades the pigment overlay toward white.
+    public float highlight;
+    /// World-space palette direction used by the cloth rim and transmission.
+    public float3 rimDirection;
+    /// Per-channel key light boost for the additive lighting stage.
+    public float3 hdrBoost;
+    /// Adjusted detail green controlling the shadow tint and additional-light weight.
     public float specMask;
 };
 
+/// Combines pigment, key light, ambient probe, and the authored lamp ramp into cloth shading weights.
 public ClothPalette clothPalette(ClothFrame frame, ClothKey key, ClothPigment p, ClothLights lights)
 {
     ClothPalette palette;

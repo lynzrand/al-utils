@@ -3,17 +3,26 @@ import Materials.Cloth.FabricSampling;
 import Surface.MaterialNoise;
 import Surface.SurfaceNormals;
 
+/// Sampled fluid, wetness, and tangent-space normal layers used by cloth pigment and lighting.
 public struct ClothSurface
 {
+    /// Noise-offset fluid texture sample. RGB is layer color and A is its height and coverage.
     public float4 fluid;
+    /// RGB sample from the garment region mask at transformed UV0.
     public float3 region;
+    /// Combined liquid amount after weighting the four garment regions.
     public float wetness;
+    /// Tangent-space liquid bump decoded at twice the wetness strength.
     public float3 wetNormalTS;
+    /// Unit tangent-space normal from adjacent fluid alpha heights.
     public float3 fluidNormalTS;
+    /// Unit tangent-space combination of the garment and liquid bump normals.
     public float3 baseNormalTS;
+    /// Final unit tangent-space normal including the fluid height layer.
     public float3 normalTS;
 };
 
+/// Samples fluid color and adjacent heights, evaluates wetness, and combines the tangent-space normal layers at UV0.
 public ClothSurface sampleClothSurface(float2 uv)
 {
     ClothSurface surface;

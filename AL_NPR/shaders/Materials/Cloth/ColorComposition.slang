@@ -8,12 +8,14 @@ import Surface.MaterialColor;
 import Lighting.SceneLighting;
 import Lighting.ToonPalette;
 
+/// Blends the garment pigment toward the authored per-channel overlay and clamps the result.
 float3 applyClothOverlay(float3 base, float3 tint, float strength)
 {
     float3 overlay = select(tint > 0.5, base + tint * 2 - 1, base + (tint - 0.5) * 2);
     return saturate(lerp(base, overlay, strength));
 }
 
+/// Estimates transmitted key light from view-facing thickness, pigment, visibility, and the material's scattering controls.
 float3 scatterCloth(ClothFrame frame, ClothKey key, ClothPalette palette, float3 pigment)
 {
     float3 n = frame.normal + key.direction;
@@ -31,6 +33,7 @@ float3 scatterCloth(ClothFrame frame, ClothKey key, ClothPalette palette, float3
     return saturate(((key.visibility * facing) * transmitted) * brightness * _TestSSS);
 }
 
+/// Shades fluid-tinted pigment with the palette and probe. Returns pigment contrast for the highlight stage.
 public float3 shadeClothPigment(ClothFrame frame, ClothKey key, ClothPalette palette, ClothRim rim,
                          float3 pigment, out float contrast)
 {
@@ -53,6 +56,7 @@ public float3 shadeClothPigment(ClothFrame frame, ClothKey key, ClothPalette pal
     return base;
 }
 
+/// Combines primary and secondary rims, the additive grazing highlight, and transmitted key light.
 public float3 addClothHighlights(float3 base, float pigmentContrast, float3 pigment, float highlight,
                           ClothFrame frame, ClothKey key, ClothPalette palette, ClothRim rim, bool frontFace)
 {
@@ -73,6 +77,7 @@ public float3 addClothHighlights(float3 base, float pigmentContrast, float3 pigm
     return lerp(clamp(color, 0, 0.98), color, max(rim.amount, highlight));
 }
 
+/// Adds the palette's key boost and the pass's additional-light response to the shaded pigment.
 public float3 addClothLights(float3 color, float3 pigment, ClothFrame frame, ClothKey key,
                       ClothPalette palette, ClothLights lights)
 {
@@ -93,6 +98,7 @@ public float3 addClothLights(float3 color, float3 pigment, ClothFrame frame, Clo
     return color;
 }
 
+/// Applies painted lines and light cancellation. The outline pass also blends its fogged silhouette color.
 public float3 clothLineColor(float3 color, ClothPigment p, ClothKey key, ClothLights lights,
                       ClothFrame frame, bool frontFace)
 {

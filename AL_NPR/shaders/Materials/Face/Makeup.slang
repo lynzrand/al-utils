@@ -1,8 +1,11 @@
 import Materials.Face.Bindings;
 import Materials.Face.Material;
 
-// The cheek artwork uses different travel and pivot settings for its red
-// pigment channel and blue highlight channel. Both rotate about UV (0.5, 0.5).
+/// The cheek artwork uses different travel and pivot settings for its red
+/// pigment channel and blue highlight channel. Both rotate about UV (0.5, 0.5).
+///
+/// Returns the normalized artwork coordinates after applying feature-specific placement, travel scale,
+/// rotation and pivot.
 float2 cheekUV(float2 uv, float4 placement, float size, float2 translation,
                float rotation, float2 travel, float2 pivot)
 {
@@ -15,16 +18,25 @@ float2 cheekUV(float2 uv, float4 placement, float size, float2 translation,
     return float2(dot(p, float2(cosine, sine)), dot(p, float2(-sine, cosine))) + 0.5;
 }
 
+/// Pigment and painted feature samples at their material-specific UV placements.
 public struct FaceMakeup
 {
+    /// RGB after spot, blush, cheek, lip and nose coverage have been applied.
     public float3 pigment;
+    /// Generated head RGB over white before painted features, used to derive the stock shadow hue.
     public float3 basePigment;
+    /// Placed nose sample. R covers pigment, G contributes shading and B covers the line. Gloss rereads A at
+    /// a shifted UV.
     public float4 nose;
+    /// R covers spot pigment, G contributes detail shade and B contributes final line coverage.
     public float4 spot;
+    /// Blue lip-mask coverage multiplied by the authored highlight alpha.
     public float lipHighlight;
+    /// Blue cheek-mask coverage sampled at the highlight placement and scaled by its authored alpha.
     public float cheekHighlight;
 }
 
+/// Composites the placed cheek, lip and nose artwork over UV0 head pigment and expression blush.
 public FaceMakeup sampleFaceMakeup(StageInput input)
 {
     float2 uv = input.uv0Uv1.xy;

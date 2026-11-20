@@ -2,18 +2,25 @@ import Materials.Cloth.Bindings;
 import Materials.Cloth.FabricSampling;
 import Surface.Coverage;
 
+/// Rasterizer values shared by the cloth depth-only and shadow-caster fragment stages.
 public struct DepthInput
 {
+    /// Rasterized position. XY are render-target pixel coordinates for the dither pattern.
     public float4 position : SV_POSITION;
+    /// XY carries mesh UV0 and ZW carries mesh UV2 for the alternative garment coverage coordinates.
     public float4 uv : TEXCOORD0;
 };
 
+/// Opacity and threshold shared by depth clipping and the world-normal pass.
 public struct ClothDepthCoverage
 {
+    /// Silhouette after cloth wetness, dithering, and both garment masks.
     public float opacity;
+    /// Selected depth or shadow alpha threshold to compare against opacity.
     public float cutoff;
 };
 
+/// Samples the shared fabric silhouette and selects the cutoff for depth or shadow rendering.
 public ClothDepthCoverage depthCoverage(float2 positionCS, float4 uv, bool shadow)
 {
     float detail = _Detail_mask_01.Sample(sampler_Detail_mask_01, uv.xy).b;
@@ -36,6 +43,7 @@ public ClothDepthCoverage depthCoverage(float2 positionCS, float4 uv, bool shado
     return { maskedClothOpacity(opacity, uv, threshold, true), cutoff };
 }
 
+/// Discards pixels outside the garment silhouette and returns zero color for the depth or shadow pass.
 public float4 clothDepth(DepthInput input, bool shadow)
 {
     ClothDepthCoverage coverage = depthCoverage(input.position.xy, input.uv, shadow);

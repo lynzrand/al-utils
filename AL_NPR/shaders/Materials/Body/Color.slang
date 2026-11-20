@@ -8,6 +8,8 @@ import Materials.Skin.Frame;
 import Surface.MaterialColor;
 import Surface.Coverage;
 
+/// Returns the fragment coverage from garment masks and the ordered screen pattern. The outline also
+/// suppresses the dented region.
 float coveredBody(StageInput input, float dent)
 {
     float4 uv = mad(float4(input.uv0Uv1.xy, input.uv2Uv3.xy), _Cloth_alpha_ST.xyxy, _Cloth_alpha_ST.zwzw);
@@ -22,6 +24,8 @@ float coveredBody(StageInput input, float dent)
     return coverage;
 }
 
+/// Combines body pigment, artist lighting and lines, then emits RGB with coverage alpha when alpha-to-mask is
+/// available.
 public float4 shadeBody(StageInput input)
 {
     float visibility = skinMainVisibility(input.positionWS.xyz);

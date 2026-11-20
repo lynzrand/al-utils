@@ -3,24 +3,28 @@ import Materials.Cloth.FabricOpacity;
 import Materials.Cloth.RegionMasks;
 import Surface.Coverage;
 
+/// Samples the garment region mask at transformed UV0.
 public float3 clothRegion(float2 uv)
 {
     return _liquidmask.Sample(sampler_liquidmask, mad(uv, _liquidmask_ST.xy, _liquidmask_ST.zw)).rgb;
 }
 
+/// Combines both liquid amounts and the four authored zone strengths into a wetness weight.
 public float clothWetness(float2 liquidUV, float3 region)
 {
     float2 liquid = _Liquid.Sample(sampler_Liquid, liquidUV).rg;
     return regionWetness(region, liquid, float4(_liquidftop, _liquidfbot, _liquidbtop, _liquidbbot));
 }
 
+/// Weights the red detail sample by the material's sheer scale, offset, and four garment zones.
 public float sheerAmount(float3 region, float detail)
 {
     return regionSheerness(region, detail, float2(_SukeScale, _SukeOffset),
                            float4(_sukeftop, _sukefbot, _sukebtop, _sukebbot));
 }
 
-// Color passes and cutout depth passes bind the dye mask at different slots.
+/// Applies the ordered color-mask dyes to the undyed pigment when the material dye switch is active.
+/// Color passes and cutout depth passes bind the dye mask at different slots.
 public float3 tintCloth(float3 pigment, float2 uv, Texture2D<float4> colorMask, SamplerState colorSampler)
 {
     float3 mask = colorMask.Sample(colorSampler, mad(uv, _ColorMask_ST.xy, _ColorMask_ST.zw)).rgb;
@@ -28,8 +32,8 @@ public float3 tintCloth(float3 pigment, float2 uv, Texture2D<float4> colorMask, 
     return _Main_color_switchtest != 0 ? dyes.color(mask) * pigment : pigment;
 }
 
-// Dilate the alpha silhouette by one texel neighborhood near the camera.
-// The center sample uses an explicit mip, while the neighbors use a mip bias.
+/// Dilate the alpha silhouette by one texel neighborhood near the camera.
+/// The center sample uses an explicit mip, while the neighbors use a mip bias.
 float clothOutlineOpacity(float baseAlpha, float2 uv, float detail, float distanceFade)
 {
     float lineWidth = ((1 - detail) * _Line_width) * _LineWidthS;
@@ -46,6 +50,7 @@ float clothOutlineOpacity(float baseAlpha, float2 uv, float detail, float distan
     return lerp(baseAlpha, dilated, saturate(lineWidth * 4) * _AlphaLine);
 }
 
+/// Applies material alpha, two dither gates, optional speck suppression, and the paired garment masks.
 public float maskedClothOpacity(float opacity, float4 uv, float threshold, bool suppressSpecks)
 {
     float binaryAlpha = passesDither(opacity, threshold) ? 1 : 0;
@@ -61,6 +66,7 @@ public float maskedClothOpacity(float opacity, float4 uv, float threshold, bool 
     return opacity * clothingMask(top, bottom, _alpha_a, _alpha_b);
 }
 
+/// Merges the selected fabric's dry silhouette with the coverage recovered by wetness.
 public float garmentOpacity<TFabric : IFabricOpacity>(float4 base, float2 uv, float detail,
                                                    float distanceFade, float wetness, float sheer)
 {
@@ -69,6 +75,7 @@ public float garmentOpacity<TFabric : IFabricOpacity>(float4 base, float2 uv, fl
     return max(opacity, smoothstep(0.3, 1, base.a) * smoothstep(0.01, 0.7, wetness));
 }
 
+/// Returns the detail-dependent garment cutoff used by color, normals, and ordinary depth.
 public float clothCutoff(float detail)
 {
     float cutoff = clamp(_AlphaClip, 0.011, 1);

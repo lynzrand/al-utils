@@ -1,20 +1,32 @@
 import Surface.MaterialColor;
 
+/// Artist controls for the shadow tint, highlight and transmission of painted fluid.
 public struct FluidPigment
 {
+    /// Blend from the fluid paint RGB at zero to the underlying skin RGB at one.
     public float transmittance;
+    /// Adds brightness to the fluid highlight in proportion to pigment value.
     public float highlightPower;
+    /// Saturation added to the HSV tint of the fluid's shaded band.
     public float shadowSaturation;
+    /// Adjusts the start and end of the fluid's facing-dependent shadow band.
     public float shadowSize;
+    /// Multiplier for the fluid's colored shadow relative to its transmitted pigment.
     public float shadowPower;
+    /// Threshold in light-facing space that controls the width of the fluid highlight.
     public float highlightSize;
+    /// Coefficient multiplying paint alpha in the exponential attenuation of the fluid color.
     public float colorScatter;
+    /// Lower limit on color throughput as scattering increases with paint alpha.
     public float minColorScale;
+    /// Scales paint alpha before blending the shaded fluid onto the underlying skin.
     public float scale;
 
-    // The painted fluid layer carries a colored shadow, a bright grazing edge
-    // and an independently sized highlight. Its alpha controls both scattering
-    // within the layer and how much of the underlying skin shows through.
+    /// The painted fluid layer carries a colored shadow, a bright grazing edge
+    /// and an independently sized highlight. Its alpha controls both scattering
+    /// within the layer and how much of the underlying skin shows through.
+    ///
+    /// Shades paint RGBA over substrate RGB using a light-facing falloff and the view/normal dot product.
     public float3 apply(float3 substrate, float4 paint, float facingAway, float viewFacing)
     {
         float3 transmitted = lerp(paint.rgb, substrate, transmittance);

@@ -1,14 +1,20 @@
 import Visibility.OpaqueRay;
 
+/// Resolved device-space depth at each camera pixel. Zero denotes sky in this reversed-depth capture.
 Texture2D<float> sceneDepth : register(t1);
-// x stores one blocked bit per directional light. y stores the original depth bits.
+/// X holds blocked-light bits, the test override, or a 0/1 diagnostic flag. Y preserves the input depth bit pattern.
 RWTexture2D<uint2> result : register(u0);
 cbuffer Frame : register(b0)
 {
+    /// Row-major inverse GPU view-projection transform for the captured depth camera.
     row_major float4x4 clipToWorld;
+    /// XYZ points from the receiver toward each directional light in world space. W is unused.
     float4 directions[32];
+    /// Width and height of the depth texture and output in pixels.
     uint2 size;
+    /// Number of populated directions. Each of the first 32 can set its corresponding bit in result.x.
     uint lightCount;
+    /// A nonzero value writes these bits at valid depth pixels to test the output path without tracing.
     uint testMask;
 };
 
@@ -16,6 +22,7 @@ cbuffer Frame : register(b0)
 #define AL_RAY_OUTPUT_MASK 0xffffffffu
 #endif
 
+/// Unprojects a pixel center and raw device depth to a homogeneous world position.
 float4 reconstruct(uint2 pixel, float depth)
 {
     float2 screen = (float2(pixel) + 0.5) / float2(size);
@@ -23,12 +30,14 @@ float4 reconstruct(uint2 pixel, float depth)
 }
 
 #ifdef AL_RAY_REPROJECT_RECEIVER
+/// Divides the unprojected coordinates by W to obtain a world-space point.
 float3 worldAt(uint2 pixel, float depth)
 {
     float4 position = reconstruct(pixel, depth);
     return position.xyz / position.w;
 }
 
+/// Returns an adjacent pixel's absolute depth difference, or one when it cannot bound a receiver.
 float neighborDifference(int2 pixel, float depth)
 {
     if (any(pixel < 0) || any(pixel >= int2(size))) return 1;
@@ -64,6 +73,7 @@ bool reprojectReceiver(uint2 pixel, float depth, inout float3 world)
 }
 #endif
 
+/// Traces from the receiver toward each light and keeps the bits requested by the output permutation.
 uint blockedLights(float3 world)
 {
     uint blocked = 0;

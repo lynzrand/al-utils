@@ -2,27 +2,47 @@
 // interleaved-gradient variant. Explicit packing keeps the captured bindings.
 cbuffer Frame : register(b0)
 {
+    /// XY are the screen width and height in pixels for the interleaved sampling pattern.
     float4 ScreenSize : packoffset(c3);
+    /// X is the sampling LOD bias for scene depth and normals.
     float4 MipBias : packoffset(c4);
+    /// ZW convert a device depth d to eye distance as 1 / (z*d + w).
     float4 ZBuffer : packoffset(c24);
+    /// XY scale normalized camera UVs into the occupied portion of the render textures.
     float4 RtScale : packoffset(c28);
+    /// Z contributes the X coefficient of the axis used to recover projected eye depth.
     float4 ViewRow0 : packoffset(c66);
+    /// Z contributes the Y coefficient of that eye-depth axis.
     float4 ViewRow1 : packoffset(c67);
+    /// Z contributes the Z coefficient of that eye-depth axis.
     float4 ViewRow2 : packoffset(c68);
+    /// XY are reciprocal depth texture dimensions for the half-texel shift and edge clamp.
     float4 DepthTexelSize : packoffset(c135);
+    /// XY are reciprocal normals texture dimensions for the half-texel edge clamp.
     float4 NormalsTexelSize : packoffset(c136);
+    /// X is intensity, Y sample radius, Z sampling-resolution scale and W the eye-distance cutoff.
     float4 Ao : packoffset(c138);
+    /// XYZ locate the top-left near-plane point relative to the camera in the reconstruction basis.
     float4 ViewTopLeft : packoffset(c139);
+    /// XY are the X-axis contribution to the projected sample position.
     float4 ProjectionCol0 : packoffset(c141);
+    /// XY are the Y-axis contribution to the projected sample position.
     float4 ProjectionCol1 : packoffset(c142);
+    /// XY are the Z-axis contribution to the projected sample position.
     float4 ProjectionCol2 : packoffset(c143);
+    /// X is inverse near-clip distance. Multiplication by eye depth scales a near-plane ray.
     float4 NearReciprocal : packoffset(c150);
+    /// XYZ span the near plane as normalized U increases from zero to one.
     float4 ViewXExtent : packoffset(c151);
+    /// XYZ span the near plane in the direction of increasing 1 - V.
     float4 ViewYExtent : packoffset(c153);
 };
 
+/// Scene depth from the captured camera. The estimator reads the raw device depth in X.
 Texture2D<float4> DepthTexture : register(t0);
+/// XYZ supply the scene normal in the same basis as the reconstructed sample offsets.
 Texture2D<float4> NormalsTexture : register(t1);
+/// Sampler used for both depth and normals, including the frame's explicit mip bias.
 SamplerState SceneSampler : register(s0);
 
 static const int SampleCount = 12;
@@ -38,10 +58,13 @@ static const float2 RandomOffsets[SampleCount] = {
 
 struct Interpolators
 {
+    /// Raster position required by the captured fullscreen signature. The estimator derives pixel coordinates from UV.
     float4 position : SV_Position;
+    /// Normalized screen coordinates used to look up depth and normals.
     float2 uv : TEXCOORD0;
 };
 
+/// Adjusts for sample resolution, clamps at the upper texture edge and returns raw device depth.
 float SampleDepth(float2 uv)
 {
     float2 halfTexel = DepthTexelSize.xy * 0.5;
@@ -49,11 +72,13 @@ float SampleDepth(float2 uv)
     return DepthTexture.SampleBias(SceneSampler, min(uv, 1.0 - halfTexel) * RtScale.xy, MipBias.x).x;
 }
 
+/// Linearizes raw device depth into positive distance along the camera depth axis.
 float EyeDepth(float depth)
 {
     return 1.0 / mad(ZBuffer.z, depth, ZBuffer.w);
 }
 
+/// Reconstructs a camera-relative point from normalized screen coordinates and linear eye depth.
 float3 ViewPosition(float2 uv, float depth)
 {
     float3 ray = mad(ViewXExtent.xyz, uv.x, ViewTopLeft.xyz);
@@ -61,6 +86,7 @@ float3 ViewPosition(float2 uv, float depth)
     return ray * (depth * NearReciprocal.x);
 }
 
+/// Rotates one of twelve deterministic offsets into the normal's hemisphere and scales it by its tap radius.
 float3 SampleOffset(float2 screenPosition, float3 normal, int index)
 {
     float2 noisePosition = mad(screenPosition, Ao.z, float2(2.083, 4.867) * index);
@@ -75,6 +101,7 @@ float3 SampleOffset(float2 screenPosition, float3 normal, int index)
     return faceforward(offset, -normal, offset);
 }
 
+/// Projects one offset, rejects sky and depth discontinuities, and weights the valid displacement by the normal.
 float EstimateOcclusion(float2 screenPosition, float3 viewPosition, float3 normal, float eyeDepth, int index)
 {
     float3 samplePosition = mad(SampleOffset(screenPosition, normal, index), Ao.y, viewPosition);
@@ -102,6 +129,7 @@ float EstimateOcclusion(float2 screenPosition, float3 viewPosition, float3 norma
     return numerator * reciprocal * (valid ? 1.0 : 0.0);
 }
 
+/// Writes occlusion to R and the normal encoded into [0, 1] to GBA. Rejected pixels use a neutral encoded normal.
 [shader("fragment")]
 float4 main(Interpolators input) : SV_Target
 {

@@ -8,12 +8,26 @@ import Surface.MaterialColor;
 import Lighting.Reflectance;
 import Lighting.ToonPalette;
 
+/// Light multipliers, shadow tints and ambient weights for the body's material response.
 struct BodyPalette
 {
-    float3 lighting, baseShadow, shadowColor, ambient;
-    float shadowBand, ambientMix, shade;
+    /// RGB multiplier applied to the matcap-shaded pigment before ambient fill.
+    float3 lighting;
+    /// Pigment-derived shadow RGB after artist tint and wetness adjustments.
+    float3 baseShadow;
+    /// Authored shadow RGB blended toward under-hair color through its opacity.
+    float3 shadowColor;
+    /// Clamped spherical harmonic RGB sampled with a half-length shading normal.
+    float3 ambient;
+    /// Direct palette weight modulated by the inverse blue artist-ramp sample.
+    float shadowBand;
+    /// Fraction of the soft probe lighting added independently of pigment.
+    float ambientMix;
+    /// Local darkness from geometric detail and view-dependent grazing, used by matcap and ramp.
+    float shade;
 };
 
+/// Combines the blue lamp ramp, keyed shadow hue, detail masks and diffuse probe into pigment lighting.
 BodyPalette sampleBodyPalette(BodySurface s, BodyKey k, BodyShade geometry, SkinLights lights)
 {
     BodyPalette p;
@@ -54,6 +68,8 @@ BodyPalette sampleBodyPalette(BodySurface s, BodyKey k, BodyShade geometry, Skin
     return p;
 }
 
+/// Applies view-dependent matcap darkening to wet skin and painted fluid, then adds the palette's ambient
+/// term.
 float3 matcapPigment(BodySurface s, BodyPalette p, BodyRim rim, float contrast)
 {
     float edge = grazingRim(normalize(s.artisticNormal), s.view + float3(0, 0.2, 0), 1.5);
@@ -78,6 +94,7 @@ float3 matcapPigment(BodySurface s, BodyPalette p, BodyRim rim, float contrast)
     return saturate(mad(p.lighting, hsvToRGB(hsv), p.ambient * p.ambientMix));
 }
 
+/// Composes pigment, shine, rim, transmitted light and bounce into HDR body RGB before outlines and coverage.
 public float3 illuminateBody(BodySurface s, BodyKey k, BodyShade shade, SkinLights lights, StageInput input)
 {
     BodyRim rim = bodyRim(s, k, shade, input);

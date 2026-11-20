@@ -1,6 +1,7 @@
 import Materials.Cloth.OutlineMaterial;
 import Geometry.ClothOutlineVertex;
 
+/// Extrudes the colored cloth outline and emits its clip position and color-pass varyings.
 [shader("vertex")]
 ClothOutlineOutput main(ClothOutlineInput input)
 {

@@ -3,37 +3,60 @@
 // Receiver position, geometric normal and flags must describe the same depth sample.
 struct MapLight
 {
+    /// World-space direction from a receiver toward a directional light. Punctual lights use position.
     float3 towardDirection;
-    uint type;                 // 0 directional, 1 punctual (point or spot).
+    /// Native light kind. Zero selects a directional ray and one selects a point or spot light.
+    uint type;
+    /// World-space light center used to set the end of a punctual shadow ray.
     float3 position;
+    /// The host sets this to one when the light record can be used.
     uint valid;
+    /// Unity GameObject layer bits accepted for both receivers and casters.
     uint gameObjectCullingMask;
-    uint lightingLayerMask;    // Receiver rendering layers.
-    uint shadowLayerMask;      // Caster rendering layers.
+    /// Rendering-layer bits that a receiver must share with this light.
+    uint lightingLayerMask;
+    /// Rendering-layer bits that a caster must share with this light.
+    uint shadowLayerMask;
+    /// Zero makes eligible receivers fully visible without a ray.
     uint shadowsEnabled;
 };                             // Native stride is 48 bytes.
 
+/// Frozen top-level acceleration structure. InstanceID indexes casterFlags.
 RaytracingAccelerationStructure casters : register(t0);
+/// World-space receiver XYZ. W must be one for a valid depth sample.
 Texture2D<float4> receiverPosition : register(t1);
+/// World-space geometric normal in XYZ for the origin offset. W is unused.
 Texture2D<float4> receiverNormal : register(t2);
-// x: one-hot GameObject layer, y: rendering layers, z: receives shadows, w: valid.
+/// X is the one-hot GameObject layer, Y the rendering-layer mask, Z enables shadows and W marks a valid receiver.
 Texture2D<uint4> receiverFlags : register(t3);
-// Indexed by TLAS InstanceID. x and y use the same layer encoding as receiverFlags.
+/// One record per InstanceID. X carries the GameObject layer bit and Y the rendering-layer mask. ZW are unused.
 StructuredBuffer<uint4> casterFlags : register(t4);
+/// Host light records indexed by selectedLight, with a native stride of 48 bytes.
 StructuredBuffer<MapLight> lights : register(t5);
+/// Per-pixel X is visibility (0 blocked, 1 clear). Y is the status (0 invalid, 1 tested, 2 unaffected).
 RWTexture2D<float2> visibility : register(u0);
 
 cbuffer VisibilityFrame : register(b0)
 {
+    /// Width and height in pixels of the receiver inputs and visibility output.
     uint2 dimensions;
+    /// Index into lights for this whole dispatch.
     uint selectedLight;
+    /// Number of uploaded records in lights.
     uint lightCount;
+    /// Minimum world-space corner enclosing the frozen casters. Rays are clipped to this box.
     float3 casterBoundsMin;
+    /// World-space distance to move the ray origin along the normalized receiver normal.
     float normalBias;
+    /// Maximum world-space corner of the same caster box.
     float3 casterBoundsMax;
+    /// Minimum world-space ray distance. A punctual ray also stops this far short of its light.
     float rayBias;
+    /// The host sets this to one when the caster data and acceleration structure are ready.
     uint sceneValid;
+    /// Number of caster flag records available for TLAS instance lookups.
     uint casterCount;
+    /// Unused words that preserve the native frame layout.
     uint2 reserved;
 };
 
@@ -42,6 +65,7 @@ static const float2 unoccluded = float2(1, 1);
 static const float2 occluded = float2(0, 1);
 static const float2 unaffected = float2(1, 2);
 
+/// Checks host counts, finite bounds and bias values before indexing buffers or issuing a ray.
 bool validFrame()
 {
     return sceneValid == 1 && selectedLight < lightCount && casterCount != 0
@@ -72,6 +96,7 @@ bool clipToCasters(inout RayDesc ray)
     return ray.TMin <= ray.TMax;
 }
 
+/// Tests candidate triangle instances against the light's caster masks and returns the visibility/status pair.
 float2 traceCasters(RayDesc ray, MapLight light)
 {
     // Expose all triangles as candidates so independent caster layers can filter hits.
@@ -96,6 +121,7 @@ float2 traceCasters(RayDesc ray, MapLight light)
     return query.CommittedStatus() == COMMITTED_TRIANGLE_HIT ? occluded : unoccluded;
 }
 
+/// Validates one receiver, applies the two layer masks and traces the selected light.
 float2 receiverVisibility(uint2 pixel)
 {
     if (!validFrame()) return invalidReceiver;

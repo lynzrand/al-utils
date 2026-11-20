@@ -1,29 +1,43 @@
 import Geometry.VertexTransforms;
 
+/// Per-camera constants at the offsets used by this shader stage.
 cbuffer Globals : register(b0)
 {
+    /// Four columns of the current world-to-clip transform, applied to the world-space vertex position.
     TransformColumns viewProjection : packoffset(c78);
 };
 
+/// Per-renderer transforms and lighting data for this stage.
 cbuffer UnityPerDraw : register(b1)
 {
+    /// Four columns of the current object-to-world transform, including translation in the last column.
     TransformColumns objectToWorld : packoffset(c0);
+    /// Inverse object transform. Its linear part supplies the inverse-transpose normal and the object-space
+    /// light.
     TransformColumns worldToObject : packoffset(c4);
 };
 
+/// Mesh attributes in the vertex register order used by this pass.
 struct StageInput
 {
+    /// Object-space mesh position. XYZ enters the object-to-world transform.
     float4 positionOS : POSITION0;
+    /// Mesh normal in object space, before deformation and interpolation.
     float3 normalOS : NORMAL0;
+    /// Mesh tangent and handedness retained in the original vertex input signature.
     float4 tangentOS : TANGENT0;
 };
 
+/// Clip position and varyings in the register order expected by the original fragment stage.
 struct StageOutput
 {
+    /// Homogeneous clip-space position for rasterization.
     float4 positionCS : SV_POSITION;
+    /// World-space mesh normal for lighting. Interpolation can change its length.
     float3 normalWS : TEXCOORD0;
 };
 
+/// Projects the original face vertex and forwards its world normal for the depth-normal target.
 [shader("vertex")]
 StageOutput main(StageInput input)
 {

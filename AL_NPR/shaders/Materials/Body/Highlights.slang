@@ -7,13 +7,29 @@ import Surface.MaterialColor;
 import Lighting.Reflectance;
 import Lighting.ToonPalette;
 
+/// Key-light state for the body palette, specular lobes and subsurface tint.
 public struct BodyKey
 {
-    public float visibility, bandVisibility, band, surfaceBand;
-    public float3 faceLight, rampLight, rimLight;
+    /// Visibility of the main light at the surface, from zero in shadow to one in light.
+    public float visibility;
+    /// Shadow visibility reshaped into the palette band, with a fallback as key presence fades.
+    public float bandVisibility;
+    /// Direct palette band evaluated from the body shading normal and the selected light response.
+    public float band;
+    /// Direct palette band evaluated from the geometric normal, used for shadow tint and highlights.
+    public float surfaceBand;
+    /// View-conditioned key direction for diffuse shading of the outward or inward triangle face.
+    public float3 faceLight;
+    /// View-conditioned direction used by the body's artist ramp.
+    public float3 rampLight;
+    /// View-conditioned direction that biases the main and secondary rim lobes.
+    public float3 rimLight;
+    /// Key-light exposure, presence and ramp controls derived from RGB.
     public PaletteLight palette;
 };
 
+/// Builds palette directions and direct weights from the facing sign, main visibility and the gathered skin
+/// response.
 public BodyKey prepareBodyKey(BodySurface s, bool front, float visibility, SkinLights lights)
 {
     BodyKey k;
@@ -30,11 +46,16 @@ public BodyKey prepareBodyKey(BodySurface s, bool front, float visibility, SkinL
     return k;
 }
 
+/// Local crease and occlusion masks assembled from general and chest-specific detail.
 public struct BodyShade
 {
-    public float creases, occlusion;
+    /// Local weight from chest and fine detail creases, used to suppress the rim.
+    public float creases;
+    /// Combined general and chest-specific crease darkening for the palette and bounce.
+    public float occlusion;
 };
 
+/// Combines chest creases, UV0 detail and bust-specific contrast into separate rim and palette masks.
 public BodyShade sampleBodyShade(BodySurface s, float2 uv)
 {
     float chest = s.detail.g * min(mad(max(s.bustMask * 0.75, _Shadow_color.a), 0.7, 0.3), 1);
@@ -50,6 +71,7 @@ public BodyShade sampleBodyShade(BodySurface s, float2 uv)
     return shade;
 }
 
+/// Maps a view/normal dot product to the two lookup weights used for the red and green painted shine lobes.
 float2 shineLobes(float3 view, float3 normal)
 {
     float facing = dot(normalize(view), normal);
@@ -57,6 +79,7 @@ float2 shineLobes(float3 view, float3 normal)
     return mad((facing - float2(0.95, 0.7)) * (float2(1, 0.59) - base), float2(20, 3.3333333), base);
 }
 
+/// Samples two scales of the shine artwork in view-projected UV, then blends chest and general highlights.
 public float paintedShine(BodySurface s, BodyKey k)
 {
     float2 uv = mad(k.faceLight.xy, 0.1, toView(s.dryNormal).xy) / mad(_shine_scale, 0.4, 0.6);
@@ -73,12 +96,19 @@ public float paintedShine(BodySurface s, BodyKey k)
     return saturate(mask) * ((mask * facing) * (lobes.r + lobes.g)) * _Highlight_color.a * 1.2;
 }
 
+/// Silhouette and transmission terms evaluated before final body pigment composition.
 public struct BodyRim
 {
-    public float main, secondary;
+    /// Main silhouette weight for the HDR highlight and matcap blends.
+    public float main;
+    /// Secondary grazing weight modulated by key visibility and skin luminance.
+    public float secondary;
+    /// RGB backscatter tint weighted by facing, visibility and the material subsurface gain.
     public float3 transmission;
 };
 
+/// Evaluates two masked grazing lobes and a backlit tint from view, light, regional masks and front-face
+/// orientation.
 public BodyRim bodyRim(BodySurface s, BodyKey k, BodyShade shade, StageInput input)
 {
     float3 normal = normalize(s.artisticNormal);

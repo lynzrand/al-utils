@@ -10,6 +10,8 @@ import Materials.Body.Material;
 import Materials.Skin.FluidLayer;
 import Materials.Skin.FluidPigment;
 
+/// Maps this material's paint texture, sampler and UV/noise controls into the selected filtering
+/// implementation.
 public FluidMap<Filter> skinFluidMap<Filter : IFluidFilter>()
 {
     FluidMap<Filter> map;
@@ -23,6 +25,7 @@ public FluidMap<Filter> skinFluidMap<Filter : IFluidFilter>()
     return map;
 }
 
+/// Reads the face or body material layout into the common set of painted-fluid color parameters.
 public FluidPigment skinFluidPigment()
 {
     FluidPigment pigment;

@@ -3,15 +3,25 @@ import Visibility.OpaqueRay;
 // Native ProbeRay records have a 32-byte stride and carry a unit direction.
 struct ProbeRay
 {
+    /// World-space start of the probe ray.
     float3 origin;
+    /// Minimum distance along the unit ray in world units, inclusive.
     float nearT;
+    /// Finite world-space unit vector. The probe rejects a squared length differing from one by more than 0.001.
     float3 direction;
+    /// Maximum world-space ray distance. It must exceed nearT.
     float farT;
 };
 
+/// Native ProbeRay records, one 32-byte record per ray.
 StructuredBuffer<ProbeRay> rays : register(t1);
+/// One word per ray. Zero means clear, one means an opaque triangle hit, and two means invalid ray input.
 RWStructuredBuffer<uint> results : register(u0);
-cbuffer Parameters : register(b0) { uint rayCount; }
+cbuffer Parameters : register(b0)
+{
+    /// Number of valid input and output slots to process.
+    uint rayCount;
+}
 
 [shader("compute")]
 [numthreads(64, 1, 1)]

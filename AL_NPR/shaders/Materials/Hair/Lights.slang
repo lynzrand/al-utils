@@ -7,6 +7,7 @@ import Lighting.PunctualLighting;
 #ifndef HAIR_STOCK_BASE
 import Lighting.PunctualShadows;
 #endif
+/// Sample the main shadow cascade at the world position. The stock base pass returns full visibility.
 public float hairKeyVisibility(float3 positionWS)
 {
 #ifdef HAIR_STOCK_BASE
@@ -18,19 +19,32 @@ public float hairKeyVisibility(float3 positionWS)
 #endif
 }
 
+/// Diffuse and reflected RGB accumulated across the hair material's accepted scene lights.
 public struct HairLights
 {
-    public float3 diffuse, wrapped, reflected;
+    /// Summed RGB radiance under the clamped cosine lobe.
+    public float3 diffuse;
+    /// Summed RGB radiance under the half-wrapped diffuse lobe.
+    public float3 wrapped;
+    /// Accumulated scene-lit strand reflection before its final tint and compression.
+    public float3 reflected;
 };
 
+/// Receiver geometry and shadow fade shared by every additional light at this fragment.
 struct HairLightInput
 {
-    float3 position, normal;
+    /// World-space fragment position used for light distance and shadow lookup.
+    float3 position;
+    /// World-space shading normal used for both diffuse lobes.
+    float3 normal;
 #ifndef HAIR_STOCK_BASE
+    /// Camera-distance fade toward full visibility for additional-light shadows.
     float shadowFade;
 #endif
 };
 
+/// Check the additional light's layer and shadow, then accumulate its material response into the diffuse
+/// lobes.
 void accumulateHairLight<R : IHairLightResponse>(inout HairLights sum, R response, HairLightInput s,
                                                  uint index, bool clustered)
 {
@@ -48,6 +62,7 @@ void accumulateHairLight<R : IHairLightResponse>(inout HairLights sum, R respons
     sum.wrapped += diffuse.wrapped * arriving;
 }
 
+/// Walk Unity's directional prefix and the local Forward+ cluster once, using the selected material response.
 public HairLights gatherHairLights<R : IHairLightResponse>(R response, HairSurface surface, HairInput input)
 {
     ForwardPlusGrid grid = ForwardPlusGrid(fp0, fp1, fp2.x);

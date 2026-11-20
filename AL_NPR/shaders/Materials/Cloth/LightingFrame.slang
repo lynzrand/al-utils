@@ -7,26 +7,37 @@ import Lighting.ToonPalette;
 import Lighting.PunctualShadows;
 #endif
 
+/// Samples the environment at the requested mip and decodes the probe into linear RGB.
 public float3 sampleReflection(float3 direction, float lod)
 {
     float4 encoded = unity_SpecCube0.SampleLevel(samplerunity_SpecCube0, direction, lod);
     return decodeProbe(encoded, specCubeDecode);
 }
 
+/// Transforms a world-space direction to view space using the rotational matrix columns.
 public float3 viewAxes(float3 world)
 {
     return mad(viewZ.xyz, world.z, mad(viewX.xyz, world.x, viewY.xyz * world.y));
 }
 
+/// Reconstructed surface frame, view direction, and the mapped world normal.
 public struct ClothFrame
 {
+    /// World-space position of this fragment on the displaced mesh.
     public float3 positionWS;
+    /// Unit world-space normal after the garment, wet, and fluid layers.
     public float3 normal;
+    /// Mapped world normal before normalization, retained for the stock highlight response.
     public float3 normalBeforeNormalize;
+    /// World-space tangent frame reconstructed from the interpolated mesh normal and tangent.
     public TangentFrame basis;
-    public float3 cameraDelta, view;
+    /// World-space vector from the fragment to the camera, including distance.
+    public float3 cameraDelta;
+    /// World-space direction toward the camera, constant across an orthographic view.
+    public float3 view;
 };
 
+/// Builds the displaced surface's tangent frame, world normal, and projection-dependent view direction.
 public ClothFrame clothFrame(ClothInput input, float3 mappedNormal)
 {
     ClothFrame frame;
@@ -39,16 +50,32 @@ public ClothFrame clothFrame(ClothInput input, float3 mappedNormal)
     return frame;
 }
 
+/// Key lighting inputs for pigment shading, the lamp palette, and rim highlights.
 public struct ClothKey
 {
-    public float3 color, direction, viewHalf, litColor;
+    /// Stock main-light RGB or the accumulated NPR band color.
+    public float3 color;
+    /// Unit world-space direction of the stock key or the weighted NPR band light.
+    public float3 direction;
+    /// Unit half-vector between the key-light direction and the view direction.
+    public float3 viewHalf;
+    /// Key color normalized by its peak channel and scaled by shadow visibility.
+    public float3 litColor;
+    /// Palette diffuse, ramp, and rim directions derived from the view and face-signed key.
     public PaletteDirections directions;
+    /// Key-light exposure and presence used when assembling the cloth palette.
     public PaletteLight palette;
-    public float visibility, shade;
+    /// Main shadow visibility in stock forward shading. NPR and outline use one here.
+    public float visibility;
+    /// Visibility remapped by key-light presence for the painted shadow response.
+    public float shade;
+    /// X gives the narrow and Y the broader stock facing band. NPR copies the gathered band weight into both lanes.
     public float2 bands;
+    /// Clamped sum of probe irradiance and the key-light band on the mapped normal.
     public float3 ambient;
 };
 
+/// Resolves the stock main light or NPR band into palette directions, facing weights, and visibility.
 public ClothKey clothKey(ClothFrame frame, ClothLights lights, bool frontFace)
 {
     ClothKey key;
