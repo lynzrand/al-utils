@@ -55,7 +55,7 @@ float HairReflection(float3 normal : TEXCOORD0, float3 tangent : TEXCOORD1,
 
 float HairDiffuseGain(float3 incident : TEXCOORD0) : SV_Target
 {
-    return hairDiffuseGain(incident);
+    return rcp(directLightCompression(incident));
 }
 
 float3 HairFinish(float4 reflection : TEXCOORD0, float4 tint : TEXCOORD1) : SV_Target

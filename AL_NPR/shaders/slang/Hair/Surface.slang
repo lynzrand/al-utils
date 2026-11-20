@@ -1,15 +1,11 @@
+import SurfaceNormals;
+
 struct HairSurface
 {
-    float3 tangent, bitangent, normal;
+    TangentFrame basis;
     float3 toCamera, view, key, shadingNormal;
     float viewEdge, elevation;
 
-    float3 toWorld(float3 local)
-    {
-        return float3(dot(float3(tangent.x, bitangent.x, normal.x), local),
-                      dot(float3(tangent.y, bitangent.y, normal.y), local),
-                      dot(float3(tangent.z, bitangent.z, normal.z), local));
-    }
 };
 
 float3 safeUnit(float3 v)
@@ -17,25 +13,15 @@ float3 safeUnit(float3 v)
     return v * rsqrt(max(dot(v, v), 1.1754944e-38));
 }
 
-float3 unpackHairNormal(float4 texel, float strength)
-{
-    float2 xy = float2(texel.r * texel.a, texel.g) * 2 - 1;
-    float z = max(sqrt(1 - min(dot(xy, xy), 1)), 1e-16);
-    return float3(xy * strength, lerp(1, z, saturate(strength)));
-}
-
 HairSurface makeHairSurface(HairInput input)
 {
     HairSurface s;
-    float scale = 1 / max(length(input.normalWS), 1.1754944e-38);
-    s.tangent = input.tangentWS.xyz * scale;
-    s.bitangent = (cross(input.normalWS, input.tangentWS.xyz) * input.tangentWS.w) * scale;
-    s.normal = input.normalWS * scale;
+    s.basis = TangentFrame(input.normalWS, input.tangentWS);
     s.toCamera = cameraPosition.xyz - input.positionWS.xyz;
     s.view = orthographic == 0 ? normalize(s.toCamera) : float3(viewX.z, viewY.z, viewZ.z);
     s.key = safeUnit(mainLightDirection.xyz);
     float4 texel = normalMap.Sample(normalMapSampler, input.uv1Uv0.xy);
-    s.shadingNormal = normalize(s.toWorld(unpackHairNormal(texel, 1 - dot(s.key, s.normal))));
+    s.shadingNormal = normalize(s.basis.toWorld(unpackScaledNormal(texel, 1 - dot(s.key, s.basis.normal))));
     s.viewEdge = 1 - dot(s.shadingNormal, s.view);
     s.elevation = saturate((s.shadingNormal.y + 1.5) / 3);
     return s;

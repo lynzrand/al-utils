@@ -36,12 +36,6 @@ public float glossReflection(float3 normal, float3 lightDirection, float3 viewDi
     return saturate((facing - 0.91) * 18) * saturate(3 * dot(normal, lightDirection));
 }
 
-public float hairDiffuseGain(float3 incident)
-{
-    float peak = max(incident.r, max(incident.g, incident.b));
-    return rcp(1 + 7 * max(peak - 0.10, 0));
-}
-
 public float3 finishHairReflection(float3 reflected, float detailMask, float4 highlightTint)
 {
     float3 rgb = 6 * reflected;

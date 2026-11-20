@@ -1,5 +1,24 @@
 static const float3 luminanceWeights = float3(0.212673, 0.715152, 0.072175);
 
+// Material response compresses the brightest channel before each light's band,
+// then uses a softer shoulder on the combined skin and cloth illumination.
+public float directLightCompression(float3 incident)
+{
+    float peak = max(incident.r, max(incident.g, incident.b));
+    return 1 + 7 * max(peak - 0.10, 0);
+}
+
+public float bandCompression(float3 sum)
+{
+    float peak = max(sum.r, max(sum.g, sum.b));
+    return mad(max(peak - 0.18, 0), 4.5, 1);
+}
+
+public float bandWeight(float3 compressed)
+{
+    return saturate(dot(compressed, luminanceWeights) * 5.5555553);
+}
+
 // Unit vectors are in world space. Bend a fresh normal for each light.
 public float bandFacing(float3 normal, float3 lightDirection)
 {

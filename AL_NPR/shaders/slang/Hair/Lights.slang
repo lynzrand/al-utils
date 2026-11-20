@@ -1,3 +1,4 @@
+import Reflectance;
 import ForwardPlus;
 import PunctualLighting;
 #ifndef HAIR_STOCK_BASE
@@ -5,6 +6,7 @@ import PunctualShadows;
 #endif
 #ifdef HAIR_NPR
 import HairLighting;
+import SceneLighting;
 
 import MapLighting;
 #endif
@@ -71,11 +73,11 @@ void accumulateHairLight(inout HairLights sum, HairLightInput s, uint index, boo
         float gain = (0.5 + excess / (1 + 2 * excess)) / (0.5 + excess);
         sum.reflected += (arriving * gain) * s.streak(light.direction);
     }
-    arriving *= hairDiffuseGain(incident);
+    arriving *= rcp(directLightCompression(incident));
 #endif
-    float facing = dot(s.normal, light.direction);
-    sum.diffuse += saturate(facing) * arriving;
-    sum.wrapped += mad(facing, 0.5, 0.5) * arriving;
+    DiffuseLobes diffuse = DiffuseLobes(s.normal, light.direction);
+    sum.diffuse += diffuse.cosine * arriving;
+    sum.wrapped += diffuse.wrapped * arriving;
 }
 
 HairLights gatherHairLights(HairSurface surface, HairInput input)

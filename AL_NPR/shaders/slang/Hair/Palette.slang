@@ -1,27 +1,13 @@
+import MaterialColor;
+
 float sumChannels(float3 c) { return dot(c, float3(1)); }
-float maxChannel(float3 c) { return max(c.r, max(c.g, c.b)); }
-float hairLuminance(float3 c) { return dot(c, float3(0.2126729, 0.7151522, 0.072175)); }
-float hairLuma601(float3 c) { return dot(c, float3(0.299, 0.587, 0.114)); }
-float3 adjustSaturation(float3 color, float saturation)
-{
-    return lerp(hairLuminance(color), color, saturation);
-}
+float hairLuminance(float3 c) { return dot(c, luminance709); }
+float hairLuma601(float3 c) { return dot(c, luminance601); }
 
-float colorSaturation(float3 c)
+float3 setColorSaturation(float3 color, float saturation)
 {
-    float value = maxChannel(c);
-    return (value - min(c.r, min(c.g, c.b))) / (value + 1e-10);
-}
-
-// Preserve hue and value as the authored ramp scales or limits HSV saturation.
-float3 setColorSaturation(float3 c, float saturation)
-{
-    float4 p = c.g >= c.b ? float4(c.gb, 0, -1.0/3.0) : float4(c.bg, -1, 2.0/3.0);
-    float4 q = c.r >= p.x ? float4(c.r, p.yzx) : float4(p.xyw, c.r);
-    float chroma = q.x - min(q.w, q.y);
-    float hue = abs(q.z + (q.w - q.y) / (6 * chroma + 1e-10));
-    float3 ramp = saturate(abs(frac(hue + float3(1, 2.0/3.0, 1.0/3.0)) * 6 - 3) - 1);
-    return q.x * lerp(float3(1), ramp, saturation);
+    float3 hsv = rgbToHSV(color);
+    return hsvToRGB(float3(hsv.x, saturation, hsv.z));
 }
 
 struct HairKey
@@ -47,7 +33,7 @@ HairKey prepareHairKey(HairSurface s, HairInput input, float visibility)
     float3 rampLight = lerp(s.view, faceKey, strength * min(k.luma * 10, 1));
     k.rampFacing = dot(rampLight, s.shadingNormal);
     k.faceFacing = dot(s.shadingNormal, faceLight);
-    k.rimFacing = dot(normalize(s.normal), faceLight);
+    k.rimFacing = dot(normalize(s.basis.normal), faceLight);
     k.band = k.toonVisibility * saturate((k.faceFacing - 0.05) * 5);
     k.probeHighlight = saturate(probe.evaluate(s.shadingNormal) + saturate(k.band * color * 0.7 + 0.3));
 
@@ -60,14 +46,14 @@ HairKey prepareHairKey(HairSurface s, HairInput input, float visibility)
 float3 shadowPigment(HairKey k, float shade)
 {
     float3 probeColor = mad(k.softProbe, 0.7, 0.3);
-    float3 ambient = setColorSaturation(probeColor, colorSaturation(probeColor) * 1.5);
+    float3 ambient = setColorSaturation(probeColor, saturationOf(probeColor) * 1.5);
     float brightness = sumChannels(k.compressed);
     float exposure = min(1 - (min(brightness, 4) - 1) / 6, 1);
     float shadowFloor = 0.7 - 0.2 * (clamp(hairLuma601(mainLightColor.rgb), 1, 3) - 1);
     float facing = max(shadowFloor, k.toonVisibility * saturate((k.rimFacing - 0.05) * 5));
     float mix = facing * ((mad(shade - 0.99, -0.10204082, 0.9) * (saturate(k.rampFacing) + 1)) * 0.375);
     float3 shadow = exposure * lerp(ambient, _Shadow_color.rgb, max(mix, 0));
-    shadow = adjustSaturation(shadow, saturate((brightness - 1) / 3) * 0.9 + 1.1);
+    shadow = tintSaturation(shadow, saturate((brightness - 1) / 3) * 0.9 + 1.1);
     return lerp(shadow, _Shadow_color.rgb, _ShadowColorControle);
 }
 
@@ -96,7 +82,7 @@ HairToon sampleHairRamp(HairSurface s, HairKey k, float shade, float3 extraDiffu
     float3 key = min(k.compressed, 1);
     key = max(key, key * 0.8 + 0.2);
     float keyEnergy = sumChannels(mainLightColor.rgb) / 3;
-    float3 ambient = lerp(float3(0.5395417, 0.5462493, 0.7379106), probe.evaluate(s.normal),
+    float3 ambient = lerp(float3(0.5395417, 0.5462493, 0.7379106), probe.evaluate(s.basis.normal),
                           saturate((keyEnergy - 1) * 0.5));
     float rampFacing = saturate((k.rampFacing + 0.8) * 0.625);
     float diffuseLevel = min(max(lit, 0.5) * rampFacing + max(1 - sumChannels(k.compressed), 0), 1);

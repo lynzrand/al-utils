@@ -9,15 +9,15 @@ import Coverage;
 float3 shadeHairPigment(float3 pigment, float rim, HairSurface s, HairKey k, HairToon toon)
 {
     float3 probeShade = mad(probe.evaluate(s.shadingNormal * 0.3), 0.7, 0.3);
-    float falloff = min(pow(max(1 - dot(s.shadingNormal, s.view + float3(0, 0.2, 0)), 0.0001), 1.2), 1);
+    float falloff = min(grazingRim(s.shadingNormal, s.view + float3(0, 0.2, 0), 1.2), 1);
     float strength = min(1 - hairLuminance(pigment) * 0.5, 1) * saturate(1 - (rim - 0.25) * 2);
-    float3 matcap = lerp(float3(1), saturate(adjustSaturation(probeShade, 2)), falloff) * strength + (1 - strength);
+    float3 matcap = lerp(float3(1), saturate(tintSaturation(probeShade, 2)), falloff) * strength + (1 - strength);
     matcap = lerp(float3(1), matcap, _TestMatcapShade);
     float3 shaded = saturate(pigment * (matcap * 0.5 + 0.5));
     float3 fullyShaded = saturate(pigment * matcap);
     shaded = lerp(shaded, fullyShaded, max(toon.shadowBand, 0.5));
     shaded *= lerp(float3(1), _Shadow_color.rgb, toon.shade * _BaseColorMix);
-    shaded = setColorSaturation(shaded, min(colorSaturation(fullyShaded) + 0.1, max(colorSaturation(shaded), 0)));
+    shaded = setColorSaturation(shaded, min(saturationOf(fullyShaded) + 0.1, max(saturationOf(shaded), 0)));
 
     float3 shadow = lerp(toon.shadow, float3(1), max(toon.shadowBand, 1 - toon.shadowPower));
     return saturate(toon.lit * shadow * shaded + k.softProbe * toon.ambientMix);
@@ -32,7 +32,7 @@ float3 hairTransmission(HairSurface s, HairKey k, HairMasks masks, float3 pigmen
     float backLight = saturate((bias - dot(safeUnit(s.shadingNormal + s.key), s.view)) / (bias + 0.75));
     float facing = saturate((dot(k.rimLight, s.shadingNormal) + 1) * 0.25);
     return saturate(saturate(2 * hairLuminance(key)) * ((visibility * facing) *
-                    (backLight * (key * saturate(adjustSaturation(color, 2))))) * _TestSSS);
+                    (backLight * (key * saturate(tintSaturation(color, 2))))) * _TestSSS);
 }
 
 float3 finishHairPalette(float3 pigment, HairStripe stripe, HairSurface s, HairInput input,
@@ -49,11 +49,11 @@ float3 finishHairPalette(float3 pigment, HairStripe stripe, HairSurface s, HairI
 
     float silhouette = saturate(edge * edge * edge * 0.3) * saturate(hairLuma601(pigment) * 0.7 + 0.3);
     float rimGain = litRed * rimMask * silhouette * min(_TestRimSub, _TestRim);
-    rimGain *= max(saturate((colorSaturation(pigment) - 0.4) * 3.3333333 + 1),
-                   saturate(1 - (maxChannel(pigment) - 0.1) * 1.4285715));
+    rimGain *= max(saturate((saturationOf(pigment) - 0.4) * 3.3333333 + 1),
+                   saturate(1 - (peakChannel(pigment) - 0.1) * 1.4285715));
     float3 base = shadeHairPigment(pigment, rim, s, k, toon);
-    float3 bright = base + clamp(k.probeHighlight * ((colorSaturation(highlight) * 2.2 + 0.8) * highlight), 0, 99);
-    float3 result = rimGain + lerp(base, adjustSaturation(bright, 1.5), saturate(3 * specular + rimGain));
+    float3 bright = base + clamp(k.probeHighlight * ((saturationOf(highlight) * 2.2 + 0.8) * highlight), 0, 99);
+    float3 result = rimGain + lerp(base, tintSaturation(bright, 1.5), saturate(3 * specular + rimGain));
     result += hairTransmission(s, k, masks, pigment, visibility);
     result *= 0.98;
     return lerp(clamp(result, 0, 0.98), result, max(stripe.intensity, rim));
@@ -78,7 +78,7 @@ float4 shadeHair(HairInput input, bool opaqueBase)
     float3 color = finishHairPalette(pigment, stripe, surface, input, masks, key, toon, visibility, rim);
 #ifndef HAIR_STOCK_BASE
     float3 fill = lerp(lights.diffuse, lights.wrapped, 0.5);
-    fill *= (colorSaturation(fill) * 0.75 + 0.25) * (max(1 - masks.shade, 0) * 0.5 + 0.5);
+    fill *= (saturationOf(fill) * 0.75 + 0.25) * (max(1 - masks.shade, 0) * 0.5 + 0.5);
     float3 keyFill = (min(key.logBoost, 1) * 0.1) * (key.band * saturate((key.rampFacing + 1) * 0.5));
     color += saturate(mad(pigment, 7, 0.3)) * (fill * (stripe.intensity * 0.2 + 1) + keyFill);
 #endif
