@@ -1,7 +1,7 @@
 # Map light visibility smoke test
 
 `build_map_visibility_smoke.cmd` compiles the standalone harness and
-`MapLightVisibility.hlsl` using local VS 18 and Windows SDK 10.0.26100.0.
+`Visibility/MapLightVisibility.slang` using CMake, Slang and the Windows SDK DXIL compiler.
 It does not run either artifact. Paths in the build script are machine-specific.
 
 From the repository root, when GPU execution is scheduled explicitly:

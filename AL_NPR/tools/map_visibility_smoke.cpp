@@ -1,4 +1,4 @@
-// Synthetic GPU proof for MapLightVisibility.hlsl. No Unity/game interaction.
+// Synthetic GPU proof for MapLightVisibility.slang. No Unity/game interaction.
 #define NOMINMAX
 #include <windows.h>
 #include <d3d12.h>

@@ -6,7 +6,7 @@ shader reconstructs its receiver at the pixel center. On a sloped triangle the
 result can lie inside the triangle. This is a hypothesis, not an established
 explanation for the remaining character artifacts.
 
-`UnityDepthRayVisibility.hlsl` keeps its original behavior by default. Defining
+`Visibility/UnityDepthRayVisibility.slang` keeps its original behavior by default. Defining
 `AL_RAY_REPROJECT_RECEIVER` adds a closest-hit query along the camera-center ray.
 The hit must fall inside a local half-pixel depth footprint, estimated from
 neighboring depths. An accepted hit replaces the original receiver position.
@@ -21,8 +21,14 @@ also do not uniquely identify a surface at silhouettes or overlaps.
 
 ## Build variants
 
-All variants use the existing 592-byte `DepthFrame` ABI and compile with DXC
-`-T cs_6_5 -E Main -WX -Ges -Gis`:
+All variants use the existing 592-byte `DepthFrame` ABI and compile from Slang
+to DXIL for shader model 6.5. Build the six named variants together from the
+repository root with a configured CMake generator.
+
+```powershell
+cmake -S AL_NPR/shaders/slang -B artifacts/npr/ray-receiver-reprojection -DSHADER_TARGET=dxil
+cmake --build artifacts/npr/ray-receiver-reprojection --target receiver-diagnostics
+```
 
 | Output in `artifacts/npr/ray-receiver-reprojection` | Defines |
 | --- | --- |
