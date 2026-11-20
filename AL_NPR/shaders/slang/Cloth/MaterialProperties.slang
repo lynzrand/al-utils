@@ -1,3 +1,7 @@
+import Cloth.FabricOpacity;
+
+typealias Fabric = FabricOpacity<FabricKind.Opaque>;
+
 cbuffer UnityPerMaterial : register(CLOTH_MATERIAL_SLOT)
 {
     float4 _Normal_map_ST : packoffset(c0.x);

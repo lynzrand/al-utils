@@ -65,6 +65,7 @@ void accumulatePunctualSkin(inout SkinLights sum, uint index, float3 positionWS,
 
 SkinLights evaluateSkinLights(StageInput input, float3 normal, float3 bandNormal)
 {
+    ForwardPlusGrid grid = ForwardPlusGrid(_FPParams0, _FPParams1, _FPParams2.x);
     SkinLights sum = {};
     float3 positionWS = input.positionWS.xyz;
     float3 cameraOffset = positionWS - _WorldSpaceCameraPos;
@@ -73,7 +74,6 @@ SkinLights evaluateSkinLights(StageInput input, float3 normal, float3 bandNormal
     fade = saturate(mad(dot(cameraOffset, cameraOffset),
                         additionalShadowFadeParams.x, additionalShadowFadeParams.y));
 #endif
-    uint unityDirectionals = uint(_FPParams0.w);
 #if SKIN_NPR
     [loop] for (uint i = 0; i < min(mapDirectionalCount, 32u); ++i)
     {
@@ -83,18 +83,17 @@ SkinLights evaluateSkinLights(StageInput input, float3 normal, float3 bandNormal
         sum.band += perLightBand(radiance * bandFacing(bandNormal, direction));
     }
 #else
-    [loop] for (uint i = 0; i < min(unityDirectionals, 256u); ++i)
+    [loop] for (uint i = 0; i < grid.directionalCount; ++i)
         accumulatePunctualSkin(sum, i, positionWS, normal, bandNormal, fade);
 #endif
 
     float2 uv = rcp(_ScaledScreenParams.xy) * input.positionCS.xy;
     uv.y = 1 - mad(uv.y, _ScaleBiasRt.x, _ScaleBiasRt.y);
     float3 cameraBack = float3(unity_MatrixV0.z, unity_MatrixV1.z, unity_MatrixV2.z);
-    ClusterLights cluster = clusterForPixel(uv, dot(-cameraBack, cameraOffset), unity_OrthoParams.w == 0,
-                                             _FPParams0, _FPParams1, _FPParams2.x);
-    uint local;
-    [loop] while (cluster.next(local))
-        accumulatePunctualSkin(sum, unityDirectionals + local, positionWS, normal, bandNormal, fade);
+    ClusterLights cluster = grid.localLights(uv, dot(-cameraBack, cameraOffset), unity_OrthoParams.w == 0);
+    uint index;
+    [loop] while (cluster.next(index))
+        accumulatePunctualSkin(sum, index, positionWS, normal, bandNormal, fade);
 #if SKIN_NPR
     // The NPR band supplies the direct response. The original ramp still
     // samples its unlit column for the material-specific palette tint.

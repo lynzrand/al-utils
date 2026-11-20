@@ -10,11 +10,13 @@ public struct ClusterLights
     uint first;
     uint last;
     uint mask;
+    uint firstLocalLight;
 
-    public __init(uint tileOffset, uint zOffset, uint range)
+    public __init(uint tileOffset, uint zOffset, uint range, uint firstLocalLight)
     {
         this.tileOffset = tileOffset;
         this.zOffset = zOffset;
+        this.firstLocalLight = firstLocalLight;
         first = range & 0xffff;
         last = range >> 16;
         mask = 0;
@@ -39,24 +41,44 @@ public struct ClusterLights
         index = 0;
         if (found)
         {
-            index = first - 32 + firstbitlow(mask);
+            index = firstLocalLight + (first - 32 + firstbitlow(mask));
             mask &= mask - 1;
         }
         return found;
     }
 }
 
-// Tile and depth-bin headers contain *local* light indices. Callers add the
-// directional count (fp0.w) when indexing the additional-light arrays.
-public ClusterLights clusterForPixel(float2 screenUV, float viewDepth, bool perspective,
-                                     float4 fp0, float4 fp1, float binCount)
+// Unity packs the camera's grid and light counts into _FPParams0/1/2.
+// Material code sees the leading directionals and absolute local light indices.
+public struct ForwardPlusGrid
 {
-    uint2 tile = uint2(max(screenUV * fp1.xy, 0));
-    uint wordsPerTile = uint(fp1.w);
-    uint tileOffset = (tile.y * uint(fp1.z) + tile.x) * wordsPerTile;
-    float depth = perspective ? log2(viewDepth) : viewDepth;
-    uint bin = min(uint(max(mad(depth, fp0.x, fp0.y), 0)), uint(binCount) - 1);
-    uint header = bin * (wordsPerTile + 2);
-    uint range = urp_ZBinBufferData[header >> 2][header & 3];
-    return ClusterLights(tileOffset, header + 2, range);
+    float2 depthScaleBias;
+    float2 tileScale;
+    uint tilesPerRow;
+    uint wordsPerTile;
+    uint binCount;
+    uint firstLocalLight;
+
+    public __init(float4 depthParams, float4 tileParams, float binCount)
+    {
+        depthScaleBias = depthParams.xy;
+        firstLocalLight = uint(depthParams.w);
+        tileScale = tileParams.xy;
+        tilesPerRow = uint(tileParams.z);
+        wordsPerTile = uint(tileParams.w);
+        this.binCount = uint(binCount);
+    }
+
+    public property directionalCount : uint { get { return min(firstLocalLight, 256u); } }
+
+    public ClusterLights localLights(float2 screenUV, float viewDepth, bool perspective)
+    {
+        uint2 tile = uint2(max(screenUV * tileScale, 0));
+        uint tileOffset = (tile.y * tilesPerRow + tile.x) * wordsPerTile;
+        float depth = perspective ? log2(viewDepth) : viewDepth;
+        uint bin = min(uint(max(mad(depth, depthScaleBias.x, depthScaleBias.y), 0)), binCount - 1);
+        uint header = bin * (wordsPerTile + 2);
+        uint range = urp_ZBinBufferData[header >> 2][header & 3];
+        return ClusterLights(tileOffset, header + 2, range, firstLocalLight);
+    }
 }

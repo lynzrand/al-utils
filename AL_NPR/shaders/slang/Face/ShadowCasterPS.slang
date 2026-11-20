@@ -1,4 +1,5 @@
-#include "DepthMaterial.slang"
+import Face.DepthMaterial;
+import DepthCoverage;
 import Coverage;
 
 [shader("fragment")]

@@ -1,3 +1,5 @@
+import Hair.Surface;
+import Hair.Bindings;
 import Reflectance;
 import ForwardPlus;
 import PunctualLighting;
@@ -11,7 +13,7 @@ import SceneLighting;
 import MapLighting;
 #endif
 
-float hairKeyVisibility(float3 positionWS)
+public float hairKeyVisibility(float3 positionWS)
 {
 #ifdef HAIR_STOCK_BASE
     return 1;
@@ -22,9 +24,9 @@ float hairKeyVisibility(float3 positionWS)
 #endif
 }
 
-struct HairLights
+public struct HairLights
 {
-    float3 diffuse, wrapped, reflected;
+    public float3 diffuse, wrapped, reflected;
 };
 
 struct HairLightInput
@@ -80,8 +82,9 @@ void accumulateHairLight(inout HairLights sum, HairLightInput s, uint index, boo
     sum.wrapped += diffuse.wrapped * arriving;
 }
 
-HairLights gatherHairLights(HairSurface surface, HairInput input)
+public HairLights gatherHairLights(HairSurface surface, HairInput input)
 {
+    ForwardPlusGrid grid = ForwardPlusGrid(fp0, fp1, fp2.x);
     HairLights sum = {};
     HairLightInput s;
     s.position = input.positionWS.xyz;
@@ -105,16 +108,15 @@ HairLights gatherHairLights(HairSurface surface, HairInput input)
         sum.reflected += color * s.streak(mapDirectionals[i].direction.xyz);
     }
 #endif
-    uint leading = uint(fp0.w);
-    [loop] for (uint i = 0; i < min(leading, 256u); ++i)
+    [loop] for (uint i = 0; i < grid.directionalCount; ++i)
         accumulateHairLight(sum, s, i, false);
 
     float2 screenUV = input.positionCS.xy / screenSize;
     screenUV.y = 1 - mad(screenUV.y, screenScaleBias.x, screenScaleBias.y);
     float viewDepth = dot(float3(viewX.z, viewY.z, viewZ.z), surface.toCamera);
-    ClusterLights cluster = clusterForPixel(screenUV, viewDepth, orthographic == 0, fp0, fp1, fp2.x);
-    uint local;
-    [loop] while (cluster.next(local))
-        accumulateHairLight(sum, s, leading + local, true);
+    ClusterLights cluster = grid.localLights(screenUV, viewDepth, orthographic == 0);
+    uint index;
+    [loop] while (cluster.next(index))
+        accumulateHairLight(sum, s, index, true);
     return sum;
 }

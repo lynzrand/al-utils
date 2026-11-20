@@ -52,11 +52,10 @@ void addClothLight(inout ClothLights lights, uint index, float3 positionWS, floa
 
 ClothLights gatherClothLights(float3 positionWS, float3 normalWS, float2 screenUV)
 {
+    ForwardPlusGrid grid = ForwardPlusGrid(_FPParams0, _FPParams1, _FPParams2.x);
     float3 fromCamera = positionWS - _WorldSpaceCameraPos.xyz;
     float viewDepth = dot(-float3(viewX.z, viewY.z, viewZ.z), fromCamera);
-    ClusterLights cluster = clusterForPixel(screenUV, viewDepth, unity_OrthoParams.w == 0,
-                                            _FPParams0, _FPParams1, _FPParams2.x);
-    uint directionalCount = uint(_FPParams0.w);
+    ClusterLights cluster = grid.localLights(screenUV, viewDepth, unity_OrthoParams.w == 0);
     ClothLights lights = {};
 #ifdef CLOTH_PREPASS
     float fade = 0;
@@ -68,12 +67,12 @@ ClothLights gatherClothLights(float3 positionWS, float3 normalWS, float2 screenU
     [loop] for (uint i = 0; i < min(mapDirectionalCount, 32u); ++i)
         accumulateBand(lights, mapDirectionals[i].color.rgb, mapDirectionals[i].direction.xyz, normalWS, 1);
 #else
-    [loop] for (uint i = 0; i < min(directionalCount, 256u); ++i)
+    [loop] for (uint i = 0; i < grid.directionalCount; ++i)
         addClothLight(lights, i, positionWS, normalWS, fade);
 #endif
-    uint localLight;
-    [loop] while (cluster.next(localLight))
-        addClothLight(lights, directionalCount + localLight, positionWS, normalWS, fade);
+    uint index;
+    [loop] while (cluster.next(index))
+        addClothLight(lights, index, positionWS, normalWS, fade);
 #ifdef CLOTH_NPR
     lights.bandColor /= bandCompression(lights.bandColor);
     lights.band = bandWeight(lights.bandColor);

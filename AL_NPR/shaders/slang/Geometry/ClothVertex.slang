@@ -1,4 +1,5 @@
 import VertexTransforms;
+import Geometry.DentedMesh;
 
 cbuffer Globals : register(b0)
 {
@@ -13,40 +14,38 @@ cbuffer UnityPerDraw : register(b1)
     float worldSign : packoffset(c9.w);
 };
 
-struct StageInput
+public struct ClothVertexInput
 {
-    float4 positionOS : POSITION0;
-    float3 normalOS : NORMAL0;
-    float4 tangentOS : TANGENT0;
-    float4 color : COLOR0;
-    float4 uv1 : TEXCOORD1;
-    float4 uv2 : TEXCOORD2;
-    float4 uv0 : TEXCOORD0;
+    public float4 positionOS : POSITION0;
+    public float3 normalOS : NORMAL0;
+    public float4 tangentOS : TANGENT0;
+    public float4 color : COLOR0;
+    public float4 uv1 : TEXCOORD1;
+    public float4 uv2 : TEXCOORD2;
+    public float4 uv0 : TEXCOORD0;
 };
 
-struct StageOutput
+public struct ClothVertexOutput
 {
-    float4 positionCS : SV_POSITION;
-    float4 positionWS : TEXCOORD0;
-    float3 normalWS : TEXCOORD1;
-    float4 tangentWS : TEXCOORD2;
-    float4 unused4 : TEXCOORD3;
-    float4 unused5 : TEXCOORD4;
-    float4 uv0Uv1 : TEXCOORD5;
-    float4 uv2Padded : TEXCOORD6;
-    float4 positionOS : TEXCOORD7;
-    float4 mainLightOS : TEXCOORD8;
-    float3 normalOS : NORMAL0;
+    public float4 positionCS : SV_POSITION;
+    public float4 positionWS : TEXCOORD0;
+    public float3 normalWS : TEXCOORD1;
+    public float4 tangentWS : TEXCOORD2;
+    public float4 unused4 : TEXCOORD3;
+    public float4 unused5 : TEXCOORD4;
+    public float4 uv0Uv1 : TEXCOORD5;
+    public float4 uv2Padded : TEXCOORD6;
+    public float4 positionOS : TEXCOORD7;
+    public float4 mainLightOS : TEXCOORD8;
+    public float3 normalOS : NORMAL0;
 };
 
-[shader("vertex")]
-StageOutput main(StageInput input)
+public ClothVertexOutput clothVertex(ClothVertexInput input, float dentPower)
 {
-    float height = _Create_dent_texture.SampleLevel(sampler_Create_dent_texture, input.uv1.xy, 0).r * _Dent_power;
-    float3 dent = mad(input.color.rgb, height * -0.14, height * 0.07);
+    float3 dent = meshDent(input.uv1.xy, input.color.rgb, dentPower);
     float3 positionWS = objectToWorld.point(input.positionOS.xyz + dent);
 
-    StageOutput output;
+    ClothVertexOutput output;
     output.positionCS = viewProjection.clipPosition(positionWS);
     output.positionWS = float4(positionWS, 0);
     output.normalWS = surfaceNormal(input.normalOS, worldToObject);

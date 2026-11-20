@@ -13,3 +13,13 @@ Texture2D<float4> _Liquid : register(t2);
 Texture2D<float4> _liquidmask : register(t3);
 Texture2D<float4> _Cloth_alpha_bot : register(t4);
 Texture2D<float4> _Cloth_alpha : register(t5);
+
+Fabric sampleDepthFabric(float3 color, float2 uv, float3 region)
+{
+    return { color, 0 };
+}
+
+float garmentShadowCutoff(float detail)
+{
+    return clothCutoff(detail);
+}

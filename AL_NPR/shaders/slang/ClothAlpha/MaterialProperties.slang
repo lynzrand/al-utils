@@ -1,3 +1,7 @@
+import Cloth.FabricOpacity;
+
+typealias Fabric = FabricOpacity<FabricKind.Cutout>;
+
 cbuffer UnityPerMaterial : register(CLOTH_MATERIAL_SLOT)
 {
     float4 _ColorMask_ST : packoffset(c1.x);

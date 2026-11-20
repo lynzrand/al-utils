@@ -1,2 +1,8 @@
-#include "DentMaterial.slang"
-#include "../Geometry/ClothVertex.slang"
+import Cloth.DentMaterial;
+import Geometry.ClothVertex;
+
+[shader("vertex")]
+ClothVertexOutput main(ClothVertexInput input)
+{
+    return clothVertex(input, _Dent_power);
+}

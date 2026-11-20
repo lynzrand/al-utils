@@ -1,4 +1,6 @@
-#include "DepthMaterial.slang"
+import Body.DepthMaterial;
+import DepthCoverage;
+import Coverage;
 
 [shader("fragment")]
 float4 main(float4 positionCS : SV_Position, float4 uv0Uv2 : TEXCOORD0) : SV_Target0

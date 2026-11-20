@@ -1,2 +1,9 @@
-#include "DentMaterial.slang"
-#include "../Geometry/DentedDepthNormals.slang"
+import Body.DentMaterial;
+import Geometry.DentedDepthNormals;
+import Geometry.DentedMesh;
+
+[shader("vertex")]
+DepthNormalsOutput main(DentedMeshInput input)
+{
+    return depthNormalsVertex(input, _Dent_power);
+}

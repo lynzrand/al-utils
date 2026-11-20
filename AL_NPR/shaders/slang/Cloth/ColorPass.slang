@@ -30,10 +30,8 @@ struct ClothInput
     bool frontFace : SV_IsFrontFace;
 };
 
-#define CLOTH_COLOR_PASS 1
-#include "RegionMasks.slang"
+#include "FabricSampling.slang"
 #include "Surface.slang"
-#include "Opacity.slang"
 #include "LightGather.slang"
 #include "LightingFrame.slang"
 #include "Pigment.slang"

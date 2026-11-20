@@ -1,5 +1,10 @@
 import VertexTransforms;
 
+SamplerState sampler_Detail_mask_01 : register(s0);
+SamplerState sampler_Create_dent_texture : register(s1);
+Texture2D<float4> _Detail_mask_01 : register(t0);
+Texture2D<float4> _Create_dent_texture : register(t1);
+
 cbuffer Globals : register(b0)
 {
     float4 mainLight : packoffset(c5);
@@ -13,45 +18,44 @@ cbuffer UnityPerDraw : register(b1)
     float worldSign : packoffset(c9.w);
 };
 
-struct StageInput
+public struct ClothOutlineInput
 {
-    float4 positionOS : POSITION0;
-    float3 normalOS : NORMAL0;
-    float4 tangentOS : TANGENT0;
-    float4 uv0 : TEXCOORD0;
-    float4 color : COLOR0;
-    float4 uv1 : TEXCOORD1;
-    float4 uv2 : TEXCOORD2;
+    public float4 positionOS : POSITION0;
+    public float3 normalOS : NORMAL0;
+    public float4 tangentOS : TANGENT0;
+    public float4 uv0 : TEXCOORD0;
+    public float4 color : COLOR0;
+    public float4 uv1 : TEXCOORD1;
+    public float4 uv2 : TEXCOORD2;
 };
 
-struct StageOutput
+public struct ClothOutlineOutput
 {
-    float4 positionCS : SV_POSITION;
-    float4 positionWS : TEXCOORD0;
-    float3 normalWS : TEXCOORD1;
-    float4 tangentWS : TEXCOORD2;
-    float4 unused4 : TEXCOORD3;
-    float4 unused5 : TEXCOORD4;
-    float4 uv0Uv1 : TEXCOORD5;
-    float4 uv2Padded : TEXCOORD6;
-    float4 positionOS : TEXCOORD7;
-    float4 mainLightOS : TEXCOORD8;
-    float3 normalOS : NORMAL0;
+    public float4 positionCS : SV_POSITION;
+    public float4 positionWS : TEXCOORD0;
+    public float3 normalWS : TEXCOORD1;
+    public float4 tangentWS : TEXCOORD2;
+    public float4 unused4 : TEXCOORD3;
+    public float4 unused5 : TEXCOORD4;
+    public float4 uv0Uv1 : TEXCOORD5;
+    public float4 uv2Padded : TEXCOORD6;
+    public float4 positionOS : TEXCOORD7;
+    public float4 mainLightOS : TEXCOORD8;
+    public float3 normalOS : NORMAL0;
 };
 
-[shader("vertex")]
-StageOutput main(StageInput input)
+public ClothOutlineOutput clothOutlineVertex(ClothOutlineInput input, float dentPower, float lineWidth, float vertexColorNormal)
 {
-    float height = _Create_dent_texture.SampleLevel(sampler_Create_dent_texture, input.uv1.xy, 0).r * _Dent_power;
+    float height = _Create_dent_texture.SampleLevel(sampler_Create_dent_texture, input.uv1.xy, 0).r * dentPower;
     float3 dent = mad(input.color.rgb, height * -0.4, height * 0.2);
     float edge = 1 - _Detail_mask_01.SampleLevel(sampler_Detail_mask_01, input.uv0.xy, 0).b;
-    float width = (edge * edge) * (_LineWidthS * _Line_width) * 0.2;
+    float width = (edge * edge) * lineWidth * 0.2;
     float clipW = viewProjection.clipPosition(objectToWorld.point(input.positionOS.xyz)).w;
     float3 outline = outlinePosition(input.positionOS.xyz, input.normalOS, input.color.rgb, dent,
-                                     width, _VertexColorNormal, clipW);
+                                     width, vertexColorNormal, clipW);
     float3 positionWS = objectToWorld.point(outline);
 
-    StageOutput output;
+    ClothOutlineOutput output;
     output.positionCS = viewProjection.clipPosition(positionWS);
     output.positionWS = float4(positionWS, 0);
     output.normalWS = surfaceNormal(input.normalOS, worldToObject);

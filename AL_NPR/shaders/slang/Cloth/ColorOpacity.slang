@@ -2,7 +2,8 @@ float colorOpacity(float2 positionCS, float4 uv, ClothPigment pigment, float wet
 {
     float detail = pigment.detail.b;
     float fade = max(mad(distance(_WorldSpaceCameraPos.xyz, objectOrigin.xyz), -0.09090909, 1), 0);
-    float opacity = garmentOpacity(pigment.base, uv.xy, detail, fade, wetness, pigment.sheer);
+    Fabric fabric = { pigment.base.rgb, pigment.sheer };
+    float opacity = garmentOpacity(fabric, pigment.base.a, uv.xy, detail, fade, wetness);
     float threshold = ditherThreshold(positionCS, _ScaledScreenParams.xy, _ScaleBiasRt.xy, _ProjectionParams.x);
 #ifdef CLOTH_PREPASS
     opacity = maskedClothOpacity(opacity, uv, threshold, false);
@@ -12,9 +13,5 @@ float colorOpacity(float2 positionCS, float4 uv, ClothPigment pigment, float wet
 #endif
     float cutoff = clothCutoff(detail);
     clipCoverage(opacity, cutoff, mipAndAlpha.z != 0);
-#ifdef CLOTH_CUTOUT
-    return opacity;
-#else
-    return mipAndAlpha.z != 0 ? opacity : 1;
-#endif
+    return Fabric.targetAlpha(opacity, mipAndAlpha.z != 0);
 }

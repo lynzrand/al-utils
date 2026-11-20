@@ -74,7 +74,7 @@ ClothPigment clothPigment(ClothInput input, ClothFrame frame, ClothSurface surfa
     ClothPigment p;
     float2 uv = input.uv.xy;
     p.base = _Create_main_texture.SampleBias(sampler_Create_main_texture, uv, _Mip);
-    p.base.rgb = tintCloth(p.base.rgb, uv);
+    p.base.rgb = tintCloth(p.base.rgb, uv, _ColorMask, sampler_ColorMask);
     float3 base = p.base.rgb;
     float3 normalWS = frame.basis.toWorld(surface.baseNormalTS);
     float3 normal = normalize(normalWS);
