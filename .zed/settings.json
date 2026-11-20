@@ -1,0 +1,17 @@
+{
+  "lsp": {
+    "slangd": {
+      "settings": {
+        "slang.additionalSearchPaths": ["./AL_NPR/shaders"],
+        "slang.searchInAllWorkspaceDirectories": false,
+        "slang.predefinedMacros": [
+          "SKIN_FACE=1",
+          "SKIN_NPR=1",
+          "SKIN_PREPASS=0",
+          "CLOTH_NPR=1",
+          "HAIR_NPR=1"
+        ]
+      }
+    }
+  }
+}

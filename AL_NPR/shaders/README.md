@@ -23,6 +23,23 @@ Both materials share skin lighting, painted fluid, sweat and reflection in `Mate
 
 ## Build a material
 
+### Editing in Zed
+
+Open the repository folder in Zed (`zed .` from its root). The Slang extension starts `slangd` from PATH. The [workspace settings](../../.zed/settings.json) give it the same module root as CMake and limit import lookup to that root and the open file's directory. Hover over a field to see its packing or usage. Go to Definition on `evaluateSkinLights` in the face Forward pass opens the shared skin lighting module. [Slang extension for Zed](https://github.com/cohaereo/zed-slang)
+
+One running server uses one set of preprocessor definitions. The checked-in context shows NPR face Forward, opaque cloth Forward and hair Forward. To inspect another layout, change the relevant family in `slang.predefinedMacros` using the stage's `defines` in [programs.json](programs.json). For a stock build use `stock.defines` when present, including an empty array. Keep the other families' settings when switching one material.
+
+| To inspect | Editor definitions for that family |
+| --- | --- |
+| NPR body Forward with the default painted filter | `SKIN_FACE=0`, `SKIN_NPR=1`, `SKIN_PREPASS=0`, `FILTER_BODY_OIL=1` |
+| Face ExtraPrePass | `SKIN_FACE=1`, `SKIN_NPR=0`, `SKIN_PREPASS=1` |
+| Cutout cloth DepthOnly | `CLOTH_CUTOUT_LAYOUT=1`, `CLOTH_DEPTH_PASS=1` |
+| Stock hair ExtraPrePass | `HAIR_STOCK_BASE=1` |
+
+Remove unused `CLOTH_*` and `HAIR_*` switches when changing passes. Their presence selects branches guarded by `#ifdef`, including when their value is zero. CMake selects the right definitions for every stage independently of the editor.
+
+### Compiling from the command line
+
 Install CMake 3.21 or newer, native Ninja and `slangc`. The game's D3D backend uses Shader Model 5 DXBC. Install FXC from the Windows SDK. If a Windows installation has multiple Ninja executables, select a native one with `-DCMAKE_MAKE_PROGRAM=path/to/ninja.exe`. Run these commands from the repository root.
 
 ```powershell
