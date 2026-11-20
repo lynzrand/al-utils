@@ -10,7 +10,7 @@ from build_skin_assets import (U32, ROW, attach_map_parameters, blob_references,
                                index, load, parts, repack)
 from patch_skin_light_shoulder import SOURCE_XYZX, TEMP_XYZ, decode_program, emit, encode_program, imm32, shoulder
 
-BASE = "55564e271bcd3feb5b1f9105a83ebed4cd9bbe70184e97d7217896d2481e9271"
+BASE_HAIR = "0ddb7021d2021814ccd94b1b33561c0612189ff6fa636109805e79cda723d45d"
 X, Y, Z, W = (0x10000a + 16 * i for i in range(4))
 DX, DY, DZ, DW = (0x100002 + (16 << i) for i in range(4))
 
@@ -162,11 +162,11 @@ def build(source, output, style, specular_only=False):
     if source.resolve() == output.resolve():
         raise ValueError("Keep the approved skin and cloth baseline")
     payload = source.read_bytes()
-    if hashlib.sha256(payload).hexdigest() != BASE:
-        raise ValueError("Expected the tested normal-bend skin and cloth bundle")
     bundle = load(payload).file
     asset, = bundle.files.values()
     shader = asset.objects[129]
+    if hashlib.sha256(shader.get_raw_data()).hexdigest() != BASE_HAIR:
+        raise ValueError("Unexpected input hair shader")
     tree = shader.read_typetree()
     data, rows = index(tree)
     changes = {}

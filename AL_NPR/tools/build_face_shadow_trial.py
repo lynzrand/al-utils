@@ -6,7 +6,7 @@ from build_view_band_trial import build_material_bundle
 from compiled_material_entry import compile_entry, bind_entry
 from patch_skin_light_shoulder import decode_program, emit, encode_program
 
-def filter_face(code, entry, band):
+def filter_face(code, entry, band, facing_ops, band_ops):
     version, instructions = decode_program(code)
     decl, = [i for i,t in enumerate(instructions) if t[0] & 2047 == 104]
     count, program = entry
@@ -18,9 +18,13 @@ def filter_face(code, entry, band):
     raw, lit = reads[:2]
     def ops(start, stop):
         return [t[0]&2047 for t in instructions[start:stop]]
-    if ops(lit+8,lit+17) != [16,56,16,50,52,56,14,56,0] or ops(lit-1,lit+2) != [56,56,56]:
+    start = lit + 2
+    contribution_at = start + len(facing_ops)
+    end = contribution_at + 1 + len(band_ops)
+    if (ops(lit-1, start) != [56, 56, 56] or ops(start, end+1) !=
+            [*facing_ops, 56, *band_ops, 0]):
         raise ValueError("Unexpected normal-bent head band")
-    contribution = instructions[lit+9]
+    contribution = instructions[contribution_at]
     visibility = instructions[lit-1][-2:]
     result = []
     sites = 0
@@ -34,16 +38,27 @@ def filter_face(code, entry, band):
                            *bind_entry(program,[uvz],output,scratch,{(7,0):t[8],(6,0):t[10]}),
                            emit(54,*t[3:5],0x10000a,output)])
             sites += 1
-        elif i == lit+9:
+        elif i == contribution_at:
             result.extend([emit(56,0x100072,uvz,0x100246,instructions[raw][2],*instructions[lit+1][-2:]),
                            emit(56,0x100072,uvz,0x100246,uvz,*contribution[5:]),
                            emit(54,0x100082,uvz,*visibility),
                            *bind_entry(band[1],[uvz],contribution[2],scratch)])
-        elif not lit+10 <= i <= lit+15:
+        elif not contribution_at < i < end:
             result.append(t)
     if sites not in (0,2):
         raise ValueError(f"Expected matching prepass and replay shadow lookups, found {sites}")
     return encode_program(version,result)
+
+
+def build(source, output):
+    shadow = compile_entry("FaceShadow")
+    face_band = compile_entry("FaceBand")
+    def opcodes(entry):
+        return [instruction[0] & 2047 for instruction in compile_entry(entry)[1]]
+    facing_ops, band_ops = opcodes("BandFacing"), opcodes("PerLightBand")
+    build_material_bundle(source, output,
+                          lambda code, _: filter_face(code, shadow, face_band, facing_ops, band_ops),
+                          targets=(76,))
 
 
 if __name__ == "__main__":
@@ -51,6 +66,4 @@ if __name__ == "__main__":
     parser.add_argument("source",type=Path)
     parser.add_argument("output",type=Path)
     args = parser.parse_args()
-    entry = compile_entry("FaceShadow")
-    band = compile_entry("FaceBand")
-    build_material_bundle(args.source,args.output,lambda code,_:filter_face(code,entry,band),targets=(76,))
+    build(args.source, args.output)

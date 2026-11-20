@@ -47,7 +47,7 @@ def shoulder(rgb, scratch, knee, strength):
     )
 
 
-def decode_program(code):
+def decode_stage(code):
     words = struct.unpack(f"<{len(code) // 4}I", code)
     cursor = 2
     instructions = []
@@ -58,9 +58,16 @@ def decode_program(code):
             raise ValueError(f"Malformed instruction at word {cursor}")
         instructions.append(words[cursor:cursor + size])
         cursor += size
-    if words[0] != 0x50 or words[1] != len(words):
-        raise ValueError("Expected a complete SM5 pixel program")
+    if words[1] != len(words):
+        raise ValueError("Incomplete shader instruction stream")
     return words[0], instructions
+
+
+def decode_program(code):
+    version, instructions = decode_stage(code)
+    if version != 0x50:
+        raise ValueError("Expected a complete SM5 pixel program")
+    return version, instructions
 
 
 def locate_mix(instructions):

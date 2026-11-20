@@ -23,15 +23,15 @@ def find_fxc():
     return max(candidates, key=lambda p: tuple(map(int, p.parents[1].name.split("."))))
 
 
-def compile_entry(entry, defines=(), *, source="BundleEntries.slang", slangc="slangc", fxc=None):
+def compile_entry(entry, defines=(), *, source="BundleEntries.slang", slangc=None, fxc=None):
     """Lower a Slang fragment function and extract its optimized SM5 instructions."""
     with tempfile.TemporaryDirectory() as tmp:
         hlsl = Path(tmp) / (entry + ".hlsl")
         binary = hlsl.with_suffix(".cso")
-        subprocess.run([slangc, SLANG / source, "-I", SLANG, "-entry", entry,
+        subprocess.run([slangc or os.getenv("SLANGC", "slangc"), SLANG / source, "-I", SLANG, "-entry", entry,
                         "-stage", "fragment", "-target", "hlsl", "-profile", "sm_5_0",
                         "-fp-mode", "precise", *["-D" + name + "=1" for name in defines], "-o", hlsl], check=True)
-        subprocess.run([fxc or find_fxc(), "/nologo", "/O3", "/T", "ps_5_0",
+        subprocess.run([fxc or os.getenv("FXC") or find_fxc(), "/nologo", "/O3", "/T", "ps_5_0",
                         "/E", entry, "/Fo", binary, hlsl], check=True)
         _, instructions = decode_program(dict(parts(binary.read_bytes()))[b"SHEX"])
     decl, = [i for i, t in enumerate(instructions) if t[0] & 2047 == 104]

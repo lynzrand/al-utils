@@ -1,40 +1,49 @@
-"""Build the current per-light skin and clothing default from local AL 1.0.4 assets."""
-import hashlib
-from pathlib import Path
-import subprocess
-import sys
+"""Prepare AL 1.0.4 Unity variants for the shared Slang lighting functions."""
 
-from build_skin_assets import WORKSPACE
+import argparse
+from pathlib import Path
+
+from build_skin_assets import SOURCE, STOCK, WORKSPACE, build as build_assets, file_sha
 from build_toon_band_trials import BASE, build as skin
 from build_toon_cloth_trials import build as cloth, retune
 from build_view_band_trial import build as view
-from build_material_response import build as material_response
+from build_material_response import UNBENT_SHA, build as material_response
 
 
-if __name__ == "__main__":
-    out = WORKSPACE / "artifacts/npr/default-build"
+def prepare_variants(out):
+    if file_sha(SOURCE) != STOCK:
+        raise ValueError(f"Expected Amanatsu Location 1.0.4 assets at {SOURCE}")
     out.mkdir(parents=True, exist_ok=True)
-    stock_skin, stock_cloth = (out / f"{name}.unity3d" for name in ("skin-source", "cloth-source"))
-    builder = [sys.executable, str(Path(__file__).with_name("build_skin_assets.py")),
-               "--full-light-fusion", "--shader-map-lights", "--map-directionals"]
-    subprocess.run([*builder, "--skin-only", "--output", stock_skin], check=True)
-    subprocess.run([*builder, "--map-raster-shadows", "--cap-profile", "color-aware", "--surface-map-lights",
-                    "--cloth-aggregate-cap", "--cloth-preserve-color", "--output", stock_cloth], check=True)
-    digest = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
-    if digest(stock_skin) != BASE or digest(stock_cloth) != "e2639d68a0950dc05ff7eda1dff8ebed45ffa2c2e20ee179f3370640792344a1":
-        raise ValueError("Unexpected intermediate bundle")
+    stock_skin = out / "skin-source.unity3d"
+    stock_cloth = out / "cloth-source.unity3d"
+    common = dict(fuse_skin=False, full_fusion=True, shader_map_lights=True,
+                  map_directional=False, map_directionals=True)
+    build_assets(SOURCE, stock_skin, skin_only=True, **common)
+    build_assets(SOURCE, stock_cloth, skin_only=False, map_raster_shadows=True,
+                 cap_profile="color-aware", surface_map_lights=True, cloth_aggregate_cap=True,
+                 cloth_preserve_color=True, **common)
+    if file_sha(stock_skin) != BASE or file_sha(stock_cloth) != "e2639d68a0950dc05ff7eda1dff8ebed45ffa2c2e20ee179f3370640792344a1":
+        raise ValueError("Unexpected intermediate game variants")
     skin(stock_skin, out / "individual.unity3d", True)
     cloth(stock_cloth, out, "individual", bright_fabric=True)
     retune(out, "individual", .70)
-    final = out / "al-skin-lighting.unity3d"
-    previous = out / "per-light-nov18.unity3d"
     unbent = out / "paired-individual-soft.unity3d"
-    view(unbent, previous)
-    camera_bent = out / "per-light-camera-bend.unity3d"
-    material_response(previous, camera_bent)
-    if digest(camera_bent) != "eae7b1bf2fc63a742e1d09848a661eb927495643aee9e8f95b757085ed0f1a88":
-        raise ValueError("Camera-bend comparison differs from the calibrated bundle")
-    material_response(unbent, final)
-    if digest(final) != "55564e271bcd3feb5b1f9105a83ebed4cd9bbe70184e97d7217896d2481e9271":
-        raise ValueError("Default differs from the live-tested bundle")
-    print(final)
+    if file_sha(unbent) != UNBENT_SHA:
+        raise ValueError("Unexpected input to the Slang variant linker")
+    return unbent
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output-dir", type=Path, default=WORKSPACE / "artifacts/npr/default-build")
+    parser.add_argument("--prepare-only", action="store_true", help="Build the input for the Slang variant linker")
+    args = parser.parse_args()
+    out = args.output_dir
+    unbent = prepare_variants(out)
+    if not args.prepare_only:
+        previous = out / "per-light-nov18.unity3d"
+        view(unbent, previous)
+        material_response(previous, out / "per-light-camera-bend.unity3d")
+        final = out / "al-skin-lighting.unity3d"
+        material_response(unbent, final)
+        print(final)

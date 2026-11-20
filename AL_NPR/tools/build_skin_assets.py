@@ -176,7 +176,8 @@ def repack(snapshot, data, rows, replacements):
     snapshot["compressedBlob"] = bytes(packed)
 
 
-def build(source, output, skin_only, fuse_skin, full_fusion, shader_map_lights, map_directional, map_directionals=False, map_ray_visibility=False, cap_profile="legacy", surface_map_lights=False, map_raster_shadows=False, cloth_aggregate_cap=False, cloth_preserve_color=False):
+def copy_stock_shaders(source, targets, bundle_name):
+    """Create the Unity bundle catalog and copy the stock shaders and their dependencies."""
     stock = load(str(source)).file
     map_bundle = load(str(TYPE_TREE_SOURCE)).file
     shader_type = map_bundle.files["BuildPlayer-map002.sharedAssets"].objects[206].serialized_type
@@ -190,9 +191,8 @@ def build(source, output, skin_only, fuse_skin, full_fusion, shader_map_lights, 
 
     # These dependencies are compiled support shaders living in the same
     # serialized file. Leave their names and inter-object references intact.
-    targets = SKIN if skin_only else {**SKIN, **SURFACES}
     assets = {80, 100, 153, *targets}
-    if not skin_only:
+    if any(path_id in SURFACES for path_id in targets):
         default_resource = stock.externals[0]
         if default_resource.path != "Library/unity default resources":
             raise ValueError("Unexpected built-in shader resource path")
@@ -210,6 +210,22 @@ def build(source, output, skin_only, fuse_skin, full_fusion, shader_map_lights, 
         asset_file.objects[path_id] = copy
         expected[path_id] = snapshot
 
+    names = [f"assets/al_npr/{name.split('/')[1]}.shader" for name in targets.values()]
+    pointer = lambda path_id: {"m_FileID": 0, "m_PathID": path_id}
+    preload = [pointer(path_id) for path_id in sorted(assets)]
+    catalog_tree.update(m_Name=bundle_name, m_AssetBundleName=bundle_name,
+                        m_PreloadTable=preload, m_Container=[
+                            (name, dict(preloadIndex=0, preloadSize=len(preload), asset=pointer(path_id)))
+                            for name, path_id in zip(names, targets, strict=True)])
+    catalog.save_typetree(catalog_tree)
+    return bundle, asset_file, expected, catalog_tree
+
+
+def build(source, output, skin_only, fuse_skin, full_fusion, shader_map_lights, map_directional, map_directionals=False, map_ray_visibility=False, cap_profile="legacy", surface_map_lights=False, map_raster_shadows=False, cloth_aggregate_cap=False, cloth_preserve_color=False):
+    targets = SKIN if skin_only else {**SKIN, **SURFACES}
+    bundle_name = ("al-skin-map-ray-visibility" if map_ray_visibility else
+                   "al-skin-map-directionals" if map_directionals else "al-skin-lighting")
+    bundle, asset_file, expected, catalog_tree = copy_stock_shaders(source, targets, bundle_name)
     requirements = {}
     for path_id, name in targets.items():
         snapshot = expected[path_id]
@@ -239,21 +255,11 @@ def build(source, output, skin_only, fuse_skin, full_fusion, shader_map_lights, 
     for path_id, snapshot in expected.items():
         asset_file.objects[path_id].save_typetree(snapshot)
 
-    names = [f"assets/al_npr/{name.split('/')[1]}.shader" for name in targets.values()]
-    pointer = lambda path_id: {"m_FileID": 0, "m_PathID": path_id}
-    preload = [pointer(path_id) for path_id in sorted(assets)]
-    bundle_name = ("al-skin-map-ray-visibility" if map_ray_visibility else
-                   "al-skin-map-directionals" if map_directionals else "al-skin-lighting")
-    catalog_tree.update(m_Name=bundle_name, m_AssetBundleName=bundle_name,
-                        m_PreloadTable=preload, m_Container=[
-                            (name, dict(preloadIndex=0, preloadSize=len(preload), asset=pointer(path_id)))
-                            for name, path_id in zip(names, targets, strict=True)])
-    catalog.save_typetree(catalog_tree)
     cab = "CAB-" + hashlib.sha256(b"".join(asset_file.objects[p].data for p in targets)).hexdigest()[:32]
     bundle.files = {cab: asset_file}
     output.write_bytes(bundle.save(packer="lz4"))
     result = load(output.read_bytes()).file.files[cab]
-    if set(result.objects) != {1, *assets} or result.objects[1].read_typetree() != catalog_tree:
+    if set(result.objects) != {1, *expected} or result.objects[1].read_typetree() != catalog_tree:
         raise ValueError("Unexpected shader bundle inventory")
     for path_id, snapshot in expected.items():
         edited = result.objects[path_id].read_typetree()

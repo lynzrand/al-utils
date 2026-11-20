@@ -33,14 +33,18 @@ def patch_body(code, entry):
     return encode_program(version, patched)
 
 
+def build(source, output, slangc=None):
+    entry = compile_entry("FluidSample", source="FluidSample.slang", slangc=slangc)
+    build_material_bundle(source, output, lambda code, _: patch_body(code, entry), targets=(146,))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path)
     parser.add_argument("output", type=Path)
-    parser.add_argument("--slangc", default="slangc")
+    parser.add_argument("--slangc")
     args = parser.parse_args()
-    entry = compile_entry("FluidSample", source="FluidSample.slang", slangc=args.slangc)
-    build_material_bundle(args.source, args.output, lambda code, _: patch_body(code, entry), targets=(146,))
+    build(args.source, args.output, args.slangc)
 
 
 if __name__ == "__main__":
