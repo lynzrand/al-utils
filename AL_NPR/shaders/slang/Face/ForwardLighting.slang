@@ -1,3 +1,5 @@
+import ToonPalette;
+
 struct FaceKey
 {
     float3 color;
@@ -5,8 +7,7 @@ struct FaceKey
     float3 diffuseDirection;
     float3 rampDirection;
     float3 rimDirection;
-    float3 palette;
-    float3 paletteLog;
+    PaletteLight palette;
     float visibility;
     float toonVisibility;
     float facing;
@@ -22,19 +23,14 @@ FaceKey faceKey(StageInput input, FaceSurface s)
     float3 direction = skinKeyDirection();
     key.direction = direction * rsqrt(max(dot(direction, direction), 1.1754944e-38));
     float3 signedLight = input.frontFacing ? normalize(key.direction) : -normalize(key.direction);
-    float luminance = dot(key.color, luminance709);
-    float compression = saturate(mad(max(log2(luminance), saturate(luminance)) - 1, -0.1, 1));
-    float3 delta = signedLight - s.view;
-    key.diffuseDirection = mad(compression * min(saturate(luminance) * 2, 1), delta, s.view);
-    key.rampDirection = mad(compression * min(saturate(luminance) * 10, 1), delta, s.view);
-    key.rimDirection = mad(compression * min(saturate(luminance) * 3.3333333, 1), delta, s.view);
-
-    float intensity = saturate(dot(key.color, float3(1)));
-    key.palette = lerp(float3(0.02822079, 0.06722254, 0.3231432), key.color, intensity);
-    key.paletteLog = max(log2(key.palette) * 0.30103, 0);
+    PaletteDirections directions = PaletteDirections(key.color, s.view, signedLight);
+    key.diffuseDirection = directions.diffuse;
+    key.rampDirection = directions.ramp;
+    key.rimDirection = directions.rim;
+    key.palette = PaletteLight(key.color);
     key.visibility = skinMainVisibility(input.positionWS.xyz);
     float shadow = saturate((key.visibility - 0.05) * 1.5384616);
-    key.toonVisibility = lerp(0.7, min(shadow * shadow * mad(shadow, -2, 3), 1), intensity);
+    key.toonVisibility = lerp(0.7, min(shadow * shadow * mad(shadow, -2, 3), 1), key.palette.presence);
     key.facing = dot(s.normal, key.diffuseDirection);
     key.rampFacing = dot(key.rampDirection, s.normal);
     key.diffuseWeight = key.toonVisibility * saturate((key.facing - 0.05) * 5);
@@ -130,58 +126,38 @@ struct FacePalette
 
 FacePalette facePalette(FaceSurface s, FaceKey k, FaceRim rim, SkinLights lights, float gloss)
 {
-    float3 pigmentHSV = rgbToHSV(s.pigment);
-    float chromaMask = max(saturate(mad(pigmentHSV.y - 0.4, 3.3333333, 1)),
-                           saturate(mad(pigmentHSV.z - 0.1, -1.4285715, 1)));
+    float chromaMask = pigmentContrast(s.pigment);
     float edge = max(1 - dot(s.normal, s.view), 0.0001);
     float shadeMask = max(s.detailShade, min(edge * edge * 0.5, 0.5));
     float shadowPower = saturate(mad(_Shadow_power, 0.4, 0.5));
     float shade = -3 * (lerp(_mdGShadeControle, 1, s.detail.mask.b) * (shadowPower * shadeMask));
-    float lightBias = dot(k.palette, float3(0.35)) - 0.333;
-    float floorValue = mad(saturate(lightBias * 1.4992504), -0.5, 0.5);
-    float shift = -min(clamp(mad(lightBias, 1.4992504, -1) * -0.25, -1, 0), -0.6);
     float ramp = max(min(min(shade, 0), (shadowPower * s.detail.mask.b) * -3), -1)
-               + ((1 - floorValue) * (k.rampFacing + shift)) / (shift + 1) + floorValue;
+               + k.palette.rampCoordinate(k.rampFacing);
     float localLight = dot(lights.diffuse, luminance709);
     float rampSample = _Lamp.Sample(sampler_Lamp, float2(saturate(ramp + localLight))).b;
     float direct = skinPaletteWeight(saturate(mad(k.diffuseWeight, 1 - s.detail.secondary.g, localLight)), lights);
-    float3 keyColor = min(k.paletteLog, 3) + saturate(k.palette);
-    float energy = dot(keyColor, float3(1));
-    float exposure = min(mad(min(energy, 4) - 1, -0.16666667, 1), 1);
-    float keyBrightness = dot(k.color, luminance601);
-    float shadowFloor = mad(clamp(keyBrightness, 1, 3) - 1, -0.2, 0.7);
+    float floorWeight = shadowFloor(k.color);
     float3 geometricNormal = normalize(s.basis.normal);
     float geometricBand = skinPaletteWeight(saturate((dot(geometricNormal, k.diffuseDirection) - 0.05) * 5), lights);
-    float band = max(shadowFloor, k.toonVisibility * geometricBand);
+    float band = max(floorWeight, k.toonVisibility * geometricBand);
     float3 objectNormal = mad(worldToObject2.xyz, geometricNormal.z,
         mad(worldToObject0.xyz, geometricNormal.x, worldToObject1.xyz * geometricNormal.y));
     float3 worldNormal = mad(objectToWorld2.xyz, objectNormal.z,
         mad(objectToWorld0.xyz, objectNormal.x, objectToWorld1.xyz * objectNormal.y));
     float3 shadeNormal = lerp(s.normal, normalize(worldNormal), s.detail.secondary.b);
-    float shadeLight = (mad(shadeMask - 0.99, -0.10204082, 0.9) * (saturate(dot(k.rampDirection, shadeNormal)) + 1)) * 0.375;
-
+    float shadeLight = shadowTintWeight(shadeMask, dot(k.rampDirection, shadeNormal));
     float3 probeFill = saturate(probe.evaluate(s.normal * 0.5));
-    float3 probeHSV = rgbToHSV(mad(probeFill, 0.7, 0.3));
-    probeHSV.y *= 1.5;
     float3 shadeColor = skinShadowPigment(s);
     float contour = max(1 - dot(normalize(s.normal + float3(0, -0.25, 0)), s.view), 0.0001);
-    float3 contourColor = lerp(shadeColor, _Shadow_color.rgb, min(pow(contour, 1.8), 1) * shadowFloor * _Shadow_color.a);
-    float3 tint = lerp(hsvToRGB(probeHSV), contourColor, max(band * shadeLight, 0));
-    tint = tintSaturation(exposure * tint, mad(saturate((energy - 1) * 0.33333334), 0.9, 1.1));
+    float3 contourColor = lerp(shadeColor, _Shadow_color.rgb, min(pow(contour, 1.8), 1) * floorWeight * _Shadow_color.a);
+    float3 tint = k.palette.exposeShadow(lerp(shadowProbeTint(probeFill), contourColor, max(band * shadeLight, 0)));
     tint = lerp(tint, _Shade_color.rgb, _UseShadowColor);
     tint = lerp(tint, float3(1), max((1 - saturate(rampSample)) * direct, 1 - shadowPower));
 
-    float strength = min(mad(max(direct, 0.5), k.wrap.x, max(1 - energy, 0)), 1);
-    float3 bright = min(keyColor, 1);
-    bright = max(bright, mad(bright, 0.8, 0.2));
-    float3 cool = lerp(float3(0.5395417, 0.5462493, 0.7379106), probe.evaluate(s.basis.normal),
-        saturate(mad((k.color.y + k.color.x) + k.color.z, 0.33333334, -1) * 0.5));
-    float3 low = min(saturate(keyBrightness), dot(bright, float3(0.33333334)) * lerp(cool, float3(1), k.wrap.x));
+    PaletteFill fill = PaletteFill(k.palette, k.color, probe.evaluate(s.basis.normal), k.rampFacing, direct);
     float3 matcap = faceMatcap(s, rim, chromaMask, shadeMask, shadeColor);
-    float ambientWeight = mad(dot(saturate(k.color), float3(0.33333334)) * min((strength + 1) * 0.7692308, 1), -0.1, 0.1);
-
     FacePalette result;
-    result.color = mad(tint * lerp(low, bright, strength), matcap, probeFill * ambientWeight);
+    result.color = mad(tint * fill.tint, matcap, probeFill * fill.ambientWeight);
     result.ambient = probe.evaluate(s.normal);
     result.chromaMask = chromaMask;
     float3 glossLight = saturate(result.ambient + saturate(mad(k.diffuseWeight * k.color, 0.9, 0.1)));
@@ -193,6 +169,6 @@ FacePalette facePalette(FaceSurface s, FaceKey k, FaceRim rim, SkinLights lights
                         saturate(mad(glossWeight, 3, chromaMask * rim.secondary)));
     float3 bounce = skinBounce(lights);
     result.bounce = mad(mad(max(1 - s.detailShade, 0), 0.25, 0.75) * bounce,
-        mad(saturationOf(bounce), 0.75, 0.25), min(k.paletteLog, 1) * 0.1 * (k.diffuseWeight * k.wrap.y));
+        mad(saturationOf(bounce), 0.75, 0.25), min(k.palette.logBoost, 1) * 0.1 * (k.diffuseWeight * k.wrap.y));
     return result;
 }

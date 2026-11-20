@@ -32,11 +32,12 @@ public float3 mainShadowCoord(float3 positionWS)
 uint pointShadowFace(float3 lightDirection)
 {
     float3 magnitude = abs(lightDirection);
-    if (magnitude.z >= magnitude.x && magnitude.z >= magnitude.y)
-        return lightDirection.z > 0 ? 5 : 4;
+    uint face = lightDirection.x > 0 ? 1 : 0;
     if (magnitude.y >= magnitude.x)
-        return lightDirection.y > 0 ? 3 : 2;
-    return lightDirection.x > 0 ? 1 : 0;
+        face = lightDirection.y > 0 ? 3 : 2;
+    if (magnitude.z >= magnitude.x && magnitude.z >= magnitude.y)
+        face = lightDirection.z > 0 ? 5 : 4;
+    return face;
 }
 
 public float punctualVisibility(Texture2D<float4> atlas, SamplerComparisonState compare, uint index,

@@ -1,3 +1,4 @@
+import ToonPalette;
 import MaterialColor;
 
 float sumChannels(float3 c) { return dot(c, float3(1)); }
@@ -13,7 +14,8 @@ float3 setColorSaturation(float3 color, float saturation)
 struct HairKey
 {
     float luma, toonVisibility, band, faceFacing, rimFacing, rampFacing;
-    float3 rimLight, probeHighlight, softProbe, compressed, logBoost, fallbackColor;
+    float3 rimLight, probeHighlight, softProbe;
+    PaletteLight palette;
 };
 
 HairKey prepareHairKey(HairSurface s, HairInput input, float visibility)
@@ -21,39 +23,28 @@ HairKey prepareHairKey(HairSurface s, HairInput input, float visibility)
     HairKey k;
     float3 color = mainLightColor.rgb;
     k.luma = saturate(hairLuminance(color));
-    float presence = saturate(sumChannels(color));
-    k.toonVisibility = lerp(0.7, smoothstep(0.3, 0.7, visibility), presence);
+    k.palette = PaletteLight(color);
+    k.toonVisibility = lerp(0.7, smoothstep(0.3, 0.7, visibility), k.palette.presence);
     k.softProbe = saturate(probe.evaluate(s.shadingNormal * 0.5));
 
-    // Low light turns the palette towards the camera. Each band uses a different response.
-    float3 faceKey = normalize(s.key) * (input.frontFace ? 1 : -1);
-    float strength = saturate(1 - 0.1 * (max(log2(hairLuminance(color)), k.luma) - 1));
-    float3 faceLight = lerp(s.view, faceKey, strength * min(k.luma * 2, 1));
-    k.rimLight = lerp(s.view, faceKey, strength * min(k.luma * 3.3333333, 1));
-    float3 rampLight = lerp(s.view, faceKey, strength * min(k.luma * 10, 1));
-    k.rampFacing = dot(rampLight, s.shadingNormal);
-    k.faceFacing = dot(s.shadingNormal, faceLight);
-    k.rimFacing = dot(normalize(s.basis.normal), faceLight);
+    float3 signedKey = normalize(s.key) * (input.frontFace ? 1 : -1);
+    PaletteDirections directions = PaletteDirections(color, s.view, signedKey);
+    k.rimLight = directions.rim;
+    k.rampFacing = dot(directions.ramp, s.shadingNormal);
+    k.faceFacing = dot(s.shadingNormal, directions.diffuse);
+    k.rimFacing = dot(normalize(s.basis.normal), directions.diffuse);
     k.band = k.toonVisibility * saturate((k.faceFacing - 0.05) * 5);
     k.probeHighlight = saturate(probe.evaluate(s.shadingNormal) + saturate(k.band * color * 0.7 + 0.3));
 
-    k.fallbackColor = lerp(float3(0.02822079, 0.06722254, 0.3231432), color, presence);
-    k.logBoost = max(log2(k.fallbackColor) * 0.30103, 0);
-    k.compressed = min(k.logBoost, 3) + saturate(k.fallbackColor);
     return k;
 }
 
 float3 shadowPigment(HairKey k, float shade)
 {
-    float3 probeColor = mad(k.softProbe, 0.7, 0.3);
-    float3 ambient = setColorSaturation(probeColor, saturationOf(probeColor) * 1.5);
-    float brightness = sumChannels(k.compressed);
-    float exposure = min(1 - (min(brightness, 4) - 1) / 6, 1);
-    float shadowFloor = 0.7 - 0.2 * (clamp(hairLuma601(mainLightColor.rgb), 1, 3) - 1);
-    float facing = max(shadowFloor, k.toonVisibility * saturate((k.rimFacing - 0.05) * 5));
-    float mix = facing * ((mad(shade - 0.99, -0.10204082, 0.9) * (saturate(k.rampFacing) + 1)) * 0.375);
-    float3 shadow = exposure * lerp(ambient, _Shadow_color.rgb, max(mix, 0));
-    shadow = tintSaturation(shadow, saturate((brightness - 1) / 3) * 0.9 + 1.1);
+    float3 ambient = shadowProbeTint(k.softProbe);
+    float facing = max(shadowFloor(mainLightColor.rgb), k.toonVisibility * saturate((k.rimFacing - 0.05) * 5));
+    float mix = facing * shadowTintWeight(shade, k.rampFacing);
+    float3 shadow = k.palette.exposeShadow(lerp(ambient, _Shadow_color.rgb, max(mix, 0)));
     return lerp(shadow, _Shadow_color.rgb, _ShadowColorControle);
 }
 
@@ -71,24 +62,13 @@ HairToon sampleHairRamp(HairSurface s, HairKey k, float shade, float3 extraDiffu
     toon.shadowPower = saturate(_Shadow_power * 0.4 + 0.5);
     float diffuse = hairLuminance(extraDiffuse);
     float lit = saturate(k.band + diffuse);
-    float intensity = (dot(k.fallbackColor, float3(0.35)) - 0.333) * 1.4992504;
-    float start = 0.5 - saturate(intensity) * 0.5;
-    float wrap = max(-clamp((intensity - 1) * -0.25, -1, 0), 0.6);
-    float ramp = lerp(start, 1, (wrap + k.rampFacing) / (wrap + 1));
+    float ramp = k.palette.rampCoordinate(k.rampFacing);
     ramp += clamp(shade * toon.shadowPower * _mdGShadeControle * -3, -1, 0);
     float sample = toonRamp.Sample(toonRampSampler, float2(saturate(diffuse + ramp))).b;
     toon.shadowBand = lit * (1 - saturate(sample));
 
-    float3 key = min(k.compressed, 1);
-    key = max(key, key * 0.8 + 0.2);
-    float keyEnergy = sumChannels(mainLightColor.rgb) / 3;
-    float3 ambient = lerp(float3(0.5395417, 0.5462493, 0.7379106), probe.evaluate(s.basis.normal),
-                          saturate((keyEnergy - 1) * 0.5));
-    float rampFacing = saturate((k.rampFacing + 0.8) * 0.625);
-    float diffuseLevel = min(max(lit, 0.5) * rampFacing + max(1 - sumChannels(k.compressed), 0), 1);
-    float3 floor = min(saturate(hairLuma601(mainLightColor.rgb)), (sumChannels(key) / 3) * lerp(ambient, 1, rampFacing));
-    toon.lit = lerp(floor, key, diffuseLevel);
-    toon.ambientMix = 0.1 - 0.1 * (sumChannels(saturate(mainLightColor.rgb)) / 3)
-                                * min((diffuseLevel + 1) * 0.7692308, 1);
+    PaletteFill fill = PaletteFill(k.palette, mainLightColor.rgb, probe.evaluate(s.basis.normal), k.rampFacing, lit);
+    toon.lit = fill.tint;
+    toon.ambientMix = fill.ambientWeight;
     return toon;
 }

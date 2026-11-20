@@ -8,7 +8,6 @@ import PunctualShadows;
 #endif
 #if SKIN_NPR
 import SceneLighting;
-
 import MapLighting;
 #endif
 
@@ -38,6 +37,9 @@ void accumulatePunctualSkin(inout SkinLights sum, uint index, float3 positionWS,
     if ((layer & asuint(lightLayerMasks[index].x)) == 0) return;
 #endif
     PunctualLight light = getPunctualLight(index, positionWS);
+#if SKIN_NPR
+    if (light.attenuation == 0) return;
+#endif
 #if SKIN_PREPASS
     float visibility = 1;
     sum.incident = mad(light.color, light.attenuation, sum.incident);
@@ -56,8 +58,9 @@ void accumulatePunctualSkin(inout SkinLights sum, uint index, float3 positionWS,
 #else
     sum.band += perLightBand(radiance * facing);
 #endif
-#endif
+#else
     accumulateSkinLight(sum, normal, bandNormal, light.direction, radiance);
+#endif
 }
 
 SkinLights evaluateSkinLights(StageInput input, float3 normal, float3 bandNormal)
@@ -77,7 +80,6 @@ SkinLights evaluateSkinLights(StageInput input, float3 normal, float3 bandNormal
         MapDirectional light = mapDirectionals[i];
         float3 direction = light.direction.xyz * rsqrt(max(dot(light.direction.xyz, light.direction.xyz), 1e-20));
         float3 radiance = light.color.rgb * rcp(directLightCompression(light.color.rgb));
-        accumulateSkinLight(sum, normal, bandNormal, direction, radiance);
         sum.band += perLightBand(radiance * bandFacing(bandNormal, direction));
     }
 #else
@@ -96,7 +98,6 @@ SkinLights evaluateSkinLights(StageInput input, float3 normal, float3 bandNormal
 #if SKIN_NPR
     // The NPR band supplies the direct response. The original ramp still
     // samples its unlit column for the material-specific palette tint.
-    sum.diffuse = 0;
     sum.band *= rcp(bandCompression(sum.band));
 #endif
     return sum;

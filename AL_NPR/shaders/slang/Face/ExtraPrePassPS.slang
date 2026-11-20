@@ -50,7 +50,6 @@ struct StageInput
 
 #include "Surface.slang"
 import SurfaceNormals;
-import Skin.SurfaceFrame;
 import MaterialColor;
 
 float4 main(StageInput input) : SV_Target0

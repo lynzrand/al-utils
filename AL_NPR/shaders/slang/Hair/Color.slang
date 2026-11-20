@@ -79,7 +79,7 @@ float4 shadeHair(HairInput input, bool opaqueBase)
 #ifndef HAIR_STOCK_BASE
     float3 fill = lerp(lights.diffuse, lights.wrapped, 0.5);
     fill *= (saturationOf(fill) * 0.75 + 0.25) * (max(1 - masks.shade, 0) * 0.5 + 0.5);
-    float3 keyFill = (min(key.logBoost, 1) * 0.1) * (key.band * saturate((key.rampFacing + 1) * 0.5));
+    float3 keyFill = (min(key.palette.logBoost, 1) * 0.1) * (key.band * saturate((key.rampFacing + 1) * 0.5));
     color += saturate(mad(pigment, 7, 0.3)) * (fill * (stripe.intensity * 0.2 + 1) + keyFill);
 #endif
 #ifdef HAIR_NPR

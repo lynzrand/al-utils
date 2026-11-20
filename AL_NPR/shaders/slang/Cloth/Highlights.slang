@@ -22,7 +22,7 @@ ClothRim clothRim(ClothInput input, ClothFrame frame, ClothKey key, ClothPalette
     stripe *= min(exp2(power * rim.logViewGrazing) * 32, 1);
     float3 narrowView = view + clamp(palette.rimDirection * float3(0.1, -0.1, -0.1), -0.1, 0.1) + lightOffset;
     float narrow = min(grazingRim(normal, narrowView, 15) * 256, 1);
-    float directFacing = saturate(dot(normal, key.facingDirection));
+    float directFacing = saturate(dot(normal, key.directions.diffuse));
     rim.amount = saturate(lerp(wide, stripe * narrow, directFacing));
     rim.verticalFade = saturate((normal.y + 1.5) / 3);
     rim.mask = 1 - max(max(1 - saturate((pigment.detail.a - 0.1) * 1.1111112), pigment.detail.g) * _RimMaskIntensity, 0);

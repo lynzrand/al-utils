@@ -1,3 +1,4 @@
+import ToonPalette;
 import SurfaceNormals;
 import MaterialColor;
 
@@ -37,8 +38,9 @@ ClothFrame clothFrame(ClothInput input, float3 mappedNormal)
 struct ClothKey
 {
     float3 color, direction, viewHalf, litColor;
-    float3 facingDirection, facingDelta;
-    float visibility, shade, strength, luma, hdrFade;
+    PaletteDirections directions;
+    PaletteLight palette;
+    float visibility, shade;
     float2 bands;
     float3 ambient;
 };
@@ -60,21 +62,17 @@ ClothKey clothKey(ClothFrame frame, ClothLights lights, bool frontFace)
     float shadow = _MainLightShadowmapTexture.SampleCmpLevelZero(shadowCompare1, uvz.xy, uvz.z);
     key.visibility = uvz.z <= 0 || uvz.z >= 1 ? 1 : mad(shadow, mainShadowParams.x, 1 - mainShadowParams.x);
 #endif
-    key.strength = saturate(dot(key.color, 1));
-    key.shade = lerp(0.7, smoothstep(0.3, 0.7, key.visibility), key.strength);
+    key.palette = PaletteLight(key.color);
+    key.shade = lerp(0.7, smoothstep(0.3, 0.7, key.visibility), key.palette.presence);
     key.litColor = key.visibility * (key.color / (peakChannel(key.color) + 1e-7));
     key.direction = sourceDirection * rsqrt(max(dot(sourceDirection, sourceDirection), 1.1754944e-38));
     float3 signedDirection = normalize(key.direction) * (frontFace ? 1 : -1);
-    key.facingDelta = signedDirection - frame.view;
-    key.luma = dot(key.color, luminance709);
-    key.hdrFade = saturate(mad(max(log2(key.luma), saturate(key.luma)) - 1, -0.1, 1));
-    float mainWeight = key.hdrFade * saturate(2 * key.luma);
-    key.facingDirection = mad(mainWeight, key.facingDelta, frame.view);
+    key.directions = PaletteDirections(key.color, frame.view, signedDirection);
     key.viewHalf = normalize(normalize(sourceDirection) + frame.view);
 #ifdef CLOTH_NPR
     key.bands = lights.band;
 #else
-    float facing = dot(frame.normal, key.facingDirection);
+    float facing = dot(frame.normal, key.directions.diffuse);
     key.bands = saturate((facing + float2(-0.05, 0.2)) * float2(5, 2.5));
 #endif
     key.ambient = saturate(probe.evaluate(frame.normal) + saturate(mad(key.shade * key.bands.x * key.color, 0.9, 0.1)));

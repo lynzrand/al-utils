@@ -1,26 +1,23 @@
+import ToonPalette;
+
 struct BodyKey
 {
     float visibility, bandVisibility, band, surfaceBand;
-    float3 faceLight, rampLight, rimLight, fallback, logBoost, compressed;
+    float3 faceLight, rampLight, rimLight;
+    PaletteLight palette;
 };
 
 BodyKey prepareBodyKey(BodySurface s, bool front, float visibility, SkinLights lights)
 {
     BodyKey k;
     float3 color = skinKeyColor();
-    float presence = saturate(dot(color, float3(1)));
-    k.fallback = lerp(float3(0.02822079, 0.06722254, 0.3231432), color, presence);
-    k.logBoost = max(log2(k.fallback) * 0.30103, 0);
-    k.compressed = min(k.logBoost, 3) + saturate(k.fallback);
+    k.palette = PaletteLight(color);
     k.visibility = visibility;
-    k.bandVisibility = lerp(0.7, smoothstep(0.05, 0.7, visibility), presence);
-    float energy = dot(color, luminance709);
-    float brightness = saturate(energy);
-    float toKey = saturate(1 - 0.1 * (max(log2(energy), brightness) - 1));
-    float3 direction = normalize(s.key) * (front ? 1 : -1);
-    k.faceLight = lerp(s.view, direction, toKey * min(brightness * 2, 1));
-    k.rampLight = lerp(s.view, direction, toKey * min(brightness * 10, 1));
-    k.rimLight = lerp(s.view, direction, toKey * min(brightness * 3.3333333, 1));
+    k.bandVisibility = lerp(0.7, smoothstep(0.05, 0.7, visibility), k.palette.presence);
+    PaletteDirections directions = PaletteDirections(color, s.view, normalize(s.key) * (front ? 1 : -1));
+    k.faceLight = directions.diffuse;
+    k.rimLight = directions.rim;
+    k.rampLight = directions.ramp;
     k.band = k.bandVisibility * skinPaletteWeight(saturate((dot(s.artisticNormal, k.faceLight) - 0.05) * 5), lights);
     k.surfaceBand = k.bandVisibility * skinPaletteWeight(saturate((dot(normalize(s.basis.normal), k.faceLight) - 0.05) * 5), lights);
     return k;

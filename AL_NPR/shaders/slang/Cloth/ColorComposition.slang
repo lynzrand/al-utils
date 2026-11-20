@@ -22,16 +22,15 @@ float3 scatterCloth(ClothFrame frame, ClothKey key, ClothPalette palette, float3
 }
 
 float3 shadeClothPigment(ClothFrame frame, ClothKey key, ClothPalette palette, ClothRim rim,
-                         float3 pigment, out float pigmentContrast)
+                         float3 pigment, out float contrast)
 {
     float3 probeTint = saturate(tintSaturation(mad(probe.evaluate(0.3 * frame.normal), 0.7, 0.3), 2));
     float shadowWeight = min(mad(dot(pigment, luminance709), -0.5, 1), 1) * saturate(mad(rim.amount - 0.25, -2, 1));
     float3 probeRim = mad(probeTint, rim.viewRim, 1 - rim.viewRim);
     float3 matShade = lerp(1, lerp(1, probeRim, shadowWeight), _TestMatcapShade);
     float value = peakChannel(pigment);
-    pigmentContrast = max(saturate(mad(saturationOf(pigment) - 0.4, 3.3333333, 1)),
-                          saturate(mad(value - 0.1, -1.4285715, 1)));
-    float occlusion = pigmentContrast * (saturate(mad(value, 0.8, 0.2)) * _TestOC) * 0.3352197;
+    contrast = pigmentContrast(pigment);
+    float occlusion = contrast * (saturate(mad(value, 0.8, 0.2)) * _TestOC) * 0.3352197;
     float3 tint = lerp(palette.tint, 1, palette.highlight);
     float3 soft = applyClothOverlay(pigment * mad(matShade, 0.5, 0.5), tint, occlusion);
     float3 hard = applyClothOverlay(pigment * matShade, tint, occlusion);
@@ -39,8 +38,7 @@ float3 shadeClothPigment(ClothFrame frame, ClothKey key, ClothPalette palette, C
     float3 hsv = rgbToHSV(base * lerp(1, palette.tint, palette.baseMix));
     hsv.y = clamp(hsv.y, 0, saturationOf(hard) + 0.1);
     base = hsvToRGB(hsv);
-    float ambientMix = mad(dot(saturate(key.color), 1.0 / 3.0) * min((palette.shade + 1) * 0.7692308, 1), -0.1, 0.1);
-    base = saturate(mad(palette.ambient * palette.shadow, base, saturate(probe.evaluate(0.5 * frame.normal)) * ambientMix));
+    base = saturate(mad(palette.ambient * palette.shadow, base, saturate(probe.evaluate(0.5 * frame.normal)) * palette.ambientWeight));
 
     return base;
 }

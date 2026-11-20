@@ -79,11 +79,13 @@ The reference for stock shading is the original game DXBC. For NPR, compare with
 - D3D11 WARP accepted the 50 reconstructed stages in each configuration. A stream-output comparison matched every vertex output for 128 inputs per stage across all 25 original vertex programs.
 - RenderDoc replay of the face Forward and outline draws matched their packed HDR reference pixels. On the body Forward draw, stock and NPR each differed at one of 42,480 affected pixels, by one packed green-channel step. The body outline matched.
 - The garment WARP comparisons covered opacity, wet layers, normals and clustered lighting. Across six color programs there were zero coverage mismatches and a maximum absolute color error of 1.8e-7. All garment depth and shadow coverage comparisons matched exactly.
-- Hair and cloth draws in the game capture had small packed HDR differences. Identical-bytecode replay controls also varied at a few pixels. The full-stage comparisons establish representative rendering behavior. They do not measure frame time or every game scene.
+- Hair and cloth draws in the game capture had small packed HDR differences. Identical-bytecode replay controls also varied at a few pixels. These comparisons cover the tested draws. Full-stage frame time and behavior across other scenes remain unmeasured.
 
 ## Performance experiments
 
 The optional `performance` target builds the AL_Performance map shadow caster, opaque replay control and twelve-tap depth-normal SSAO reconstruction. Set `PERFORMANCE_FEATURES` to a semicolon-separated list of experiment defines. The map shader supports `FAST_UNIFORM_PATH`, `FAST_OPAQUE_PATH` and `FAST_AUDITED_MAP_TEXTURES`. SSAO supports `SKIP_INVALID_SAMPLE` and `SKIP_ZERO_NUMERATOR`. The opaque control assumes the specific map002 textures and constants described in the [map shader experiment](../../../AL_Performance/tools/README.shader-patch.md).
 
+
+The map-shadow experiments matched the historical HLSL in 2,349,056 synthetic pixel comparisons across all eight feature combinations. All four SSAO configurations matched the historical HLSL on a 2560 × 1440 captured draw.
 
 The optional DXIL target `visibility-kernels` builds the native interop compute shader at SM 6.0 and the inline ray-query shaders at SM 6.5. `receiver-diagnostics` builds the frozen-camera diagnostic permutations. [Receiver tests](../../tools/README.ray-receiver-reprojection.md)

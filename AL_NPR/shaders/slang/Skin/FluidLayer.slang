@@ -1,6 +1,10 @@
 import FluidMask;
 import MaterialNoise;
 
+#ifndef FILTER_BODY_OIL
+#define FILTER_BODY_OIL 0
+#endif
+
 struct FluidLayer
 {
     float4 paint;
@@ -9,7 +13,7 @@ struct FluidLayer
 
 float4 readFluidPaint(float2 uv)
 {
-#if defined(FILTER_BODY_OIL) && SKIN_NPR && !SKIN_FACE
+#if FILTER_BODY_OIL && SKIN_NPR && !SKIN_FACE
     return sampleFluidMask(_FluidTex, sampler_FluidTex, uv);
 #else
     return _FluidTex.Sample(sampler_FluidTex, uv);

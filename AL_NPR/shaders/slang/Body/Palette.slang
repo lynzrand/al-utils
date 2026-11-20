@@ -9,25 +9,20 @@ BodyPalette sampleBodyPalette(BodySurface s, BodyKey k, BodyShade geometry, Skin
     BodyPalette p;
     float3 key = skinKeyColor();
     float3 softProbe = saturate(probe.evaluate(s.artisticNormal * 0.5));
-    float3 ambientHSV = rgbToHSV(mad(softProbe, 0.7, 0.3));
-    ambientHSV.y *= 1.5;
-    float3 ambient = hsvToRGB(ambientHSV);
+    float3 ambient = shadowProbeTint(softProbe);
     float3 hsv = rgbToHSV(s.substrate);
     float rootValue = sqrt(hsv.z);
     float3 shadow = hsvToRGB(float3(hsv.x, min(sqrt(hsv.y), 1) * min(rootValue * 10, 1), rootValue * 0.5 + 0.5));
     shadow = lerp(shadow, _Shade_color.rgb, _UseShadowColor);
     p.baseShadow = saturate(lerp(shadow, float3(0.9049558, 0.8495964, 0.6682819), s.liquid));
     p.shadowColor = lerp(_Shadow_color.rgb, _Under_hair_color.rgb, s.hairAlpha);
-    float shadowFloor = 0.7 - (clamp(dot(key, luminance601), 1, 3) - 1) * 0.2;
+    float floorWeight = shadowFloor(key);
     float shadowEdge = min(grazingRim(normalize(s.artisticNormal - float3(0, 0.25, 0)), s.view, 1.8), 1);
-    float3 edgeColor = lerp(p.baseShadow, p.shadowColor, shadowEdge * shadowFloor * _Shadow_color.a);
+    float3 edgeColor = lerp(p.baseShadow, p.shadowColor, shadowEdge * floorWeight * _Shadow_color.a);
     float grazingView = max(1 - dot(s.artisticNormal, s.view), 0.0001);
     p.shade = max(geometry.occlusion, min(grazingView * grazingView * 0.5, 0.5));
-    float depth = mad(p.shade - 0.99, -0.10204082, 0.9) * (saturate(dot(k.rampLight, s.unitNormal)) + 1) * 0.375;
-    float energy = dot(k.compressed, float3(1));
-    float exposure = min(1 - (min(energy, 4) - 1) / 6, 1);
-    shadow = exposure * lerp(ambient, edgeColor, max(max(shadowFloor, k.surfaceBand) * depth, 0));
-    shadow = tintSaturation(shadow, mad(saturate((energy - 1) / 3), 0.9, 1.1));
+    float depth = shadowTintWeight(p.shade, dot(k.rampLight, s.unitNormal));
+    shadow = k.palette.exposeShadow(lerp(ambient, edgeColor, max(max(floorWeight, k.surfaceBand) * depth, 0)));
     shadow = lerp(shadow, _Shade_color.rgb, _UseShadowColor);
 
     float shadowPower = saturate(mad(_Shadow_power, 0.4, 0.5));
@@ -35,33 +30,18 @@ BodyPalette sampleBodyPalette(BodySurface s, BodyKey k, BodyShade geometry, Skin
     float dent = (shadowPower * s.dent) * _mdGShadeControle;
     float bias = (s.flatten - 1) * 3;
     float rampOffset = clamp(min(min(bias * detail, bias * dent), bias * (shadowPower * s.detail.b)), -1, 0);
-    float intensity = (dot(k.fallback, float3(0.35)) - 0.333) * 1.4992504;
-    float wrap = max(-clamp((intensity - 1) * -0.25, -1, 0), 0.6);
-    float start = mad(saturate(intensity), -0.5, 0.5);
     float facing = dot(k.rampLight, s.artisticNormal);
     float diffuse = dot(lights.diffuse, luminance709);
-    float ramp = rampOffset + lerp(start, 1, (wrap + facing) / (wrap + 1));
+    float ramp = rampOffset + k.palette.rampCoordinate(facing);
     float lamp = _Lamp.Sample(sampler_Lamp, float2(saturate(diffuse + ramp))).b;
     float lit = skinPaletteWeight(saturate(k.band + diffuse), lights);
     p.shadowBand = lit * (1 - saturate(lamp));
 
-    float facingWeight = saturate((facing + 0.8) * 0.625);
-    float3 keyTint = min(k.compressed, 1);
-    keyTint = max(keyTint, mad(keyTint, 0.8, 0.2));
-    float3 probeTint = lerp(float3(0.5395417, 0.5462493, 0.7379106), probe.evaluate(s.basis.normal),
-                            saturate((dot(key, float3(1.0 / 3)) - 1) * 0.5));
-    float3 floor = min(saturate(dot(key, luminance601)), dot(keyTint, float3(1.0 / 3)) * lerp(probeTint, 1, facingWeight));
-    float lightWeight = min(mad(max(lit, 0.5), facingWeight, max(1 - energy, 0)), 1);
-    p.lighting = lerp(shadow, 1, max(p.shadowBand, 1 - shadowPower)) * lerp(floor, keyTint, lightWeight);
+    PaletteFill fill = PaletteFill(k.palette, key, probe.evaluate(s.basis.normal), facing, lit);
+    p.lighting = lerp(shadow, 1, max(p.shadowBand, 1 - shadowPower)) * fill.tint;
     p.ambient = softProbe;
-    p.ambientMix = 0.1 - 0.1 * dot(saturate(key), float3(1.0 / 3)) * min((lightWeight + 1) * 0.7692308, 1);
+    p.ambientMix = fill.ambientWeight;
     return p;
-}
-
-float pigmentContrast(float3 pigment)
-{
-    return max(saturate(mad(saturationOf(pigment) - 0.4, 3.3333333, 1)),
-               saturate(mad(peakChannel(pigment) - 0.1, -1.4285715, 1)));
 }
 
 float3 matcapPigment(BodySurface s, BodyPalette p, BodyRim rim, float contrast)
@@ -106,7 +86,7 @@ float3 illuminateBody(BodySurface s, BodyKey k, BodyShade shade, SkinLights ligh
     lit = rim.transmission + (rimWeight + lit);
     float3 diffuse = skinBounce(lights);
     float wrapped = saturate((dot(k.rampLight, s.artisticNormal) + 1) * 0.5);
-    float3 bounce = min(k.logBoost, 1) * 0.1 * (k.band * wrapped)
+    float3 bounce = min(k.palette.logBoost, 1) * 0.1 * (k.band * wrapped)
                   + mad(max(1 - shade.occlusion, 0), 0.25, 0.75) * diffuse * mad(saturationOf(diffuse), 0.75, 0.25);
     float3 capped = clamp(lit * 0.98, 0, 0.98);
     lit = mad(saturate(mad(s.pigment, 7, 0.3)), bounce, lerp(capped, lit * 0.98, max(shine, rim.main)));

@@ -35,14 +35,14 @@ public struct ClusterLights
             mask = tiles & bins & lower & upper;
             first = (word + 1) << 5;
         }
-        if (mask == 0)
+        bool found = mask != 0;
+        index = 0;
+        if (found)
         {
-            index = 0;
-            return false;
+            index = first - 32 + firstbitlow(mask);
+            mask &= mask - 1;
         }
-        index = first - 32 + firstbitlow(mask);
-        mask &= mask - 1;
-        return true;
+        return found;
     }
 }
 

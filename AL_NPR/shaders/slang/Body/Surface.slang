@@ -1,4 +1,3 @@
-import Skin.SurfaceFrame;
 import SurfaceNormals;
 import Skin.SurfaceMath;
 #include "../Skin/FluidPigment.slang"
