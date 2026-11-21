@@ -74,7 +74,7 @@ public struct StockSkinResponse<let collectIncident : bool> : ISkinLightResponse
 }
 
 /// Accumulates authored map lights and punctual lights in per-light toon bands.
-public struct ToonSkinResponse<let face : bool> : ISkinLightResponse
+public struct ToonSkinResponse : ISkinLightResponse
 {
     /// Sum of the per-light RGB bands. finishAccumulation compresses the completed sum before palette and
     /// fill reads.
@@ -83,21 +83,14 @@ public struct ToonSkinResponse<let face : bool> : ISkinLightResponse
     /// Starts the per-pixel light accumulation with zero radiance.
     public __init() { band = 0; }
 
-    /// Compresses incident radiance and evaluates the bent-normal band. Face visibility is applied after
-    /// the band and body visibility before it.
+    /// Filter cast shadows the same way on both sides of the face/body material boundary.
     [mutating]
     public void addPunctual(PunctualLight light, float visibility, float3 normal, float3 bandNormal)
     {
         float3 incident = light.attenuation * light.color;
         float gain = rcp(directLightCompression(incident));
         float facing = bandFacing(bandNormal, light.direction);
-        if (face)
-            band += visibleFaceBand((incident * gain) * facing, visibility);
-        else
-        {
-            float3 radiance = (light.attenuation * visibility) * light.color;
-            band += perLightBand((radiance * gain) * facing);
-        }
+        band += visibleLightBand((incident * gain) * facing, visibility);
     }
 
     /// Adds the band of one authored directional using its normalized world direction and RGB radiance.

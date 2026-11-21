@@ -15,7 +15,7 @@ import Lighting.PunctualShadows;
 #if SKIN_NPR
 import Lighting.MapLighting;
 /// Compiled skin response for this material and pass, selected before light traversal.
-public typealias SkinLights = ToonSkinResponse<SKIN_FACE != 0>;
+public typealias SkinLights = ToonSkinResponse;
 #else
 /// Compiled skin response for this material and pass, selected before light traversal.
 public typealias SkinLights = StockSkinResponse<SKIN_PREPASS != 0>;
@@ -38,7 +38,7 @@ void accumulatePunctualSkin<T : ISkinLightResponse>(
     float visibility = 1;
 #else
     float visibility = punctualVisibility(_AdditionalLightsShadowmapTexture, shadowCompare1,
-        index, positionWS, light.direction, shadowFade, (SKIN_FACE != 0) && (SKIN_NPR != 0));
+        index, positionWS, light.direction, shadowFade, SKIN_NPR != 0);
 #endif
     sum.addPunctual(light, visibility, normal, bandNormal);
 }

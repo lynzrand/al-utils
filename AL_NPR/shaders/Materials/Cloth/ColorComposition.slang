@@ -91,6 +91,11 @@ public float3 addClothLights(float3 color, float3 pigment, ClothFrame frame, Clo
     float3 lit = saturate(pigment);
     color = mad(lit, additional, color);
     color = mad(lit, fabricFill(probe.evaluate(frame.normal), lights.band), color);
+    // Roll off bright, pale fabric before post-processing clips the folds of a white garment.
+    float peak = peakChannel(color);
+    float excess = max(peak - 0.45, 0);
+    float pale = smoothstep(0.35, 0.85, min(lit.r, min(lit.g, lit.b)));
+    color *= 1 - pale * (excess / max(peak, 1e-6)) * (1 - rcp(1 + 1.8 * excess));
 #else
     color = mad(saturate(mad(pigment, 7, 0.3)), additional, color);
 #endif

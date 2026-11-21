@@ -52,10 +52,9 @@ uint pointShadowFace(float3 lightDirection)
     return face;
 }
 
-/// Return per-light shadow visibility after strength and camera fade. The face filter selects a 3 × 3 tent
-/// over the atlas.
+/// Return per-light shadow visibility after strength and camera fade, optionally using a 3 × 3 tent.
 public float punctualVisibility(Texture2D<float4> atlas, SamplerComparisonState compare, uint index,
-                                float3 positionWS, float3 lightDirection, float shadowFade, bool filterFace)
+                                float3 positionWS, float3 lightDirection, float shadowFade, bool useTent)
 {
     float4 shadow = additionalShadowParams[index];
     int slice = int(shadow.w);
@@ -66,7 +65,7 @@ public float punctualVisibility(Texture2D<float4> atlas, SamplerComparisonState 
             slice += int(pointShadowFace(lightDirection));
         float4 homogeneous = additionalWorldToShadow[slice].clipPosition(positionWS);
         float3 uvz = homogeneous.xyz / homogeneous.w;
-        float sample = filterFace ? faceVisibility(atlas, compare, uvz)
+        float sample = useTent ? tentVisibility(atlas, compare, uvz)
                                   : atlas.SampleCmpLevelZero(compare, uvz.xy, uvz.z);
         if (uvz.z > 0 && uvz.z < 1)
             visibility = mad(sample, shadow.x, 1 - shadow.x);

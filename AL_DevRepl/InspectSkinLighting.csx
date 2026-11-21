@@ -21,7 +21,9 @@
         {
             if (material == null || material.shader == null) continue;
             string shader = material.shader.name;
-            if ((shader == "AL/skin_head" || shader == "AL/skin_body") && !shaders.Contains(shader)) shaders.Add(shader);
+            bool isSkin = shader == "AL/skin_head" || shader.StartsWith("AL/skin_head/", StringComparison.Ordinal)
+                || shader == "AL/skin_body" || shader.StartsWith("AL/skin_body/", StringComparison.Ordinal);
+            if (isSkin && !shaders.Contains(shader)) shaders.Add(shader);
         }
         if (shaders.Count == 0) continue;
         var anchor = renderer.probeAnchor;

@@ -59,7 +59,7 @@ The rasterizer also supplies `SV_IsFrontFace`. Keep register order, component ty
 |---|---|---|
 | Key light | Uses Unity's main direction and RGB, with the main cascade shadow sample. | Derives neutral key intensity and direction from the object's spherical harmonics. Key visibility is one. |
 | Direct lights | Visits Unity's additional directional prefix, then the Forward+ lights in the pixel's tile and depth bin. Uses the renderer's layer bits. | Visits the plugin's map directionals, then the same cluster lookup for local lights filtered to map layer bit `2`. |
-| Response | Accumulates cosine and wrapped diffuse. Their mean contributes colored bounce. | Compresses each incident color and selects its toon band using a bent normal. For a local face light the band is chosen before applying filtered shadow visibility. The combined bands get a second compression and drive palette weight, bounce and pigment-colored fill. |
+| Response | Accumulates cosine and wrapped diffuse. Their mean contributes colored bounce. | Compresses each incident color and selects its toon band using a bent normal. For face and body, filtered cast-shadow visibility scales each local light’s band. The combined bands get a second compression and drive palette weight, bounce and pigment-colored fill. |
 
 The capture used for the forward comparison is `artifacts/npr/4k/unified-visible-primary_frame14117.rdc`, event 5012, a 25,104-index draw. Replaying the extracted game program and compiled stock Slang on that draw's inputs produced identical target pixels. Comparing the NPR reference with the compiled NPR program also matched. These substitutions test one draw and its bound inputs. The asset's keyword and parameter tables establish which original variant the build replaces.
 

@@ -1,5 +1,6 @@
 import Materials.Hair.Bindings;
 import Materials.Hair.HairLighting;
+import Materials.Hair.FiberStreak;
 import Lighting.MapLighting;
 import Lighting.PunctualLighting;
 import Lighting.SceneLighting;
@@ -54,6 +55,11 @@ public struct ToonHairResponse : IHairLightResponse
     float strandU;
     /// Screen-space X derivative of both UV1 components, carried into the explicit-gradient sample.
     float2 strandGradient;
+#ifdef HAIR_FIBER
+    float2 strandGradientY;
+    float sheenScale;
+    float strandTilt;
+#endif
 
     /// Cache the orthogonalized strand axes and the UV1 derivative before entering the light loops.
     public __init(HairInput input, float3 viewDirection)
@@ -64,6 +70,20 @@ public struct ToonHairResponse : IHairLightResponse
         view = viewDirection;
         strandU = input.uv1Uv0.x;
         strandGradient = ddx(input.uv1Uv0.xy);
+#ifdef HAIR_FIBER
+        strandTangent = paintedFiberAxis(strandNormal, strandTangent, input.uv1Uv0.xy, input.positionWS.xyz);
+        strandGradientY = ddy(input.uv1Uv0.xy);
+#ifdef HAIR_FIBER_DENSE
+        strandTilt = fiberStrandTilt(input.uv1Uv0.xy);
+#else
+        strandTilt = 0;
+#endif
+#ifdef HAIR_FIBER_NOISE
+        sheenScale = fiberSheenNoise(input.uv1Uv0.xy);
+#else
+        sheenScale = 1;
+#endif
+#endif
     }
 
     /// Select the map lights on rendering-layer bit 1 (mask value 2).
@@ -74,9 +94,14 @@ public struct ToonHairResponse : IHairLightResponse
     /// Sample one light's stripe from its world-space direction and the cached strand frame.
     float streak(float3 direction)
     {
+#ifdef HAIR_FIBER
+        return fiberStreak(paintedHighlight, paintedHighlightSampler, strandNormal, strandTangent,
+                           direction, view, strandU, strandGradient, strandGradientY, sheenScale, strandTilt);
+#else
         // The release binds zero and ddx(UV) to the two explicit gradient operands.
         return paintedReflection(paintedHighlight, paintedHighlightSampler, strandNormal, strandTangent,
                                  direction, view, strandU, 0, strandGradient);
+#endif
     }
 
     /// RGB strand reflection contributed by the map's authored directional lights.

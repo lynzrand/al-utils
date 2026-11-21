@@ -35,7 +35,7 @@ void accumulateBand(inout ClothLights lights, float3 color, float3 direction,
                     float3 normalWS, float visibility)
 {
     float3 capped = color / directLightCompression(color);
-    float3 band = perLightBand(capped * visibility * bandFacing(normalWS, direction));
+    float3 band = visibleLightBand(capped * bandFacing(normalWS, direction), visibility);
     lights.bandColor += band;
     lights.bandDirection = mad(direction, dot(band, float3(0.212673, 0.715152, 0.072175)), lights.bandDirection);
 }

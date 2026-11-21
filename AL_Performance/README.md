@@ -26,7 +26,7 @@ See [the rendering study](RESEARCH.md) for frame timings, shader variants, and t
 
 ## Reproduce the benchmarks
 
-Set `AL_PERF_CONTROL` to an absolute JSON file path in a writable results directory before launching the game. A running game reads each new `Id` once. `Seconds` defaults to zero, which writes a state snapshot without a timed run. For example, after settling into a scene, write `{"Id":"msaa-4","Uncap":true,"Msaa":4,"Warmup":5,"Seconds":15}` to collect a timed run. Write `{"Id":"reset"}` to restore the runtime settings. The CSV records frame intervals and any Unity CPU and GPU timings exposed by the player. The JSON records camera and graphics settings at the beginning and end.
+Set `AL_PERF_CONTROL` to an absolute JSON file path in a writable results directory before launching the game. A running game reads each new `Id` once. `Seconds` defaults to zero, which writes a state snapshot without a timed run. For example, after settling into a scene, write `{"Id":"msaa-4","Uncap":true,"Msaa":4,"Warmup":5,"Seconds":15}` to collect a timed run. An omitted scale, MSAA, FSR-disable or soft-shadow setting inherits your plugin configuration. Write `{"Id":"reset"}` to restore those configured settings and the original frame limit. The CSV records frame intervals and any Unity CPU and GPU timings exposed by the player. The JSON records camera and graphics settings at the beginning and end.
 
 ```powershell
 .\AL_Performance\tools\run-sweep.ps1 -ControlFile .\artifacts\bench\control.json -Prefix maker

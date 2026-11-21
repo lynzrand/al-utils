@@ -46,6 +46,7 @@ link_variants("${base}" "${work}/material.unity3d" build_material_response
               "${shader_root}/Bundle/BundleEntries.slang" "${shader_root}/Lighting/SceneLighting.slang")
 link_variants("${work}/material.unity3d" "${work}/hair.unity3d" build_hair_reflection
               "${shader_root}/Bundle/BundleEntries.slang" "${shader_root}/Materials/Hair/HairLighting.slang"
+              "${shader_root}/Materials/Hair/FiberStreak.slang"
               "${shader_root}/Lighting/SceneLighting.slang")
 link_variants("${work}/hair.unity3d" "${work}/face.unity3d" build_face_shadow_trial
               "${shader_root}/Bundle/BundleEntries.slang" "${shader_root}/Lighting/SceneLighting.slang"

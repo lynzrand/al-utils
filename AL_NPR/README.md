@@ -1,10 +1,12 @@
 # AL Scene Lighting
 
-AL Scene Lighting applies authored map light directions and per-light toon shading to character skin, fabric and hair.
+AL Scene Lighting shades character skin and fabric under the map lights. Each light chooses a toon band, then its cast shadow fades that contribution. On hair, nearby strands have slightly different tilts, so each lamp catches a different part of a lock as the character or camera moves. A softer sheen connects the fine reflections beneath the artist’s painted streak.
 
 ## Installing the standalone build
 
 Extract the archive beside `AmanatsuLocation.exe` with BepInEx 6 IL2CPP installed. Start the game. The DLL and its shader bundle belong together in `BepInEx/plugins/AL_NPR/`. When upgrading, replace both files. Press **F7** on a map to compare with stock lighting. Shadow settings are in `BepInEx/config/local.al.npr.cfg`.
+
+Fresh installs request 32-bit depth for the additional-light shadow atlas to reduce stepping where hair casts shadows on skin. Set `HigherShadowDepthPrecision = false` to use the game’s depth format and save atlas memory. Existing installations keep their saved preference.
 
 This build targets the Windows Direct3D player in Amanatsu Location 1.0.4. It contains the reconstructed non-instanced configuration of each material pass. Other keyword permutations, including instancing and alternate shadow layouts, were present in the earlier game-derived bundle and may render differently here.
 

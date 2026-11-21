@@ -53,6 +53,12 @@ def bind_entry(program, inputs, output, scratch, resources=None):
         destination = i
         while i < len(t):
             token = t[i]
+            # Integer multiply can discard its high word using a null destination.
+            # This operand occupies one token and has no register index to remap.
+            if token == 0x0000d000:
+                args.append(token)
+                i += 1
+                continue
             if token in (0x4001, 0x4002):
                 size = 2 if token == 0x4001 else 5
                 args.extend(t[i:i+size])

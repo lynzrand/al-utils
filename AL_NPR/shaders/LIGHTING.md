@@ -6,9 +6,10 @@ Start with the [Slang sources and build instructions](README.md). The bundle bui
 flowchart TD
     L["One eligible map light"] --> A["Color × distance and spot falloff"]
     A --> B["Limit intensity while preserving hue"]
-    B --> C["Multiply by visibility and normal bent toward this light"]
+    B --> C["Weight by normal bent toward this light"]
     C --> D["Choose this light's toon band"]
-    D --> E["Sum the band colors from all lights, then cap"]
+    D --> V["Weight this light's band by shadow visibility"]
+    V --> E["Sum the band colors from all lights, then cap"]
     E --> F["Colored direct light and scalar band"]
     N["Scene ambient probe at the material normal"] --> G["Shared diffuse fill"]
     F --> G
@@ -31,6 +32,10 @@ The local [source pack](../../artifacts/npr/normal-bend/character-shader-sources
 To regenerate a listing from local game assets, run `export_material_programs.py OUTPUT --source INPUT --vkd3d PATH --spirv-cross PATH`. Omit `--source` for the stock serialized file. The exporter also works with just the output and input paths to extract DXBC for D3D disassembly. The inspection path uses vkd3d's DXBC-to-SPIR-V translator and SPIRV-Cross's HLSL backend. All 16 listings compiled with the Windows SDK DXC at `ps_6_0`. The running game loads SM5 programs with its original Unity signatures and resource bindings. The bundle builder uses FXC on the named entry points and binds their arithmetic into those programs.
 
 ## Scene-lit hair and face shadow trials
+
+The standalone hair shader aligns the reflection to the local fiber axis and evaluates it for each eligible light. In the soft sheen, a 160 × 15 UV field varies local fiber tilt within a broader 32 × 3 pattern. Fine variation fades when the fibers become too small to resolve. The painted highlight uses the same light/view geometry with its longer stamp. A collapsed UV chart uses the mesh bitangent so interpolation noise cannot reverse the reflection axis. [Fiber reflection](Materials/Hair/FiberStreak.slang)
+
+The current skin shader uses a nine-tap shadow comparison on face and body. Both skin and fabric apply visibility after choosing the toon band. Fabric keeps its original shadow sampling and alpha coverage. On pale fabric, a soft roll-off above a peak linear channel value of 0.45 preserves folds through post-processing. The loader requests higher shadow depth precision by default on new installs. The measurements below are from the earlier face-only trial.
 
 [HairLighting.slang](Materials/Hair/HairLighting.slang) contains the reflection shape, diffuse light cap and reflection tint. The painted version samples the artist's highlight texture along the strand at a coordinate derived from each light's half-vector. The original material contributes a weaker painted stripe. Each eligible punctual source supplies its own distance falloff, spot falloff and shadow visibility. Authored map directionals supply color and direction with unit visibility. Both hair color passes use this calculation. The base pass keeps its opaque dither coverage and the forward overlay keeps its material alpha. The hair outline uses the original shader.
 

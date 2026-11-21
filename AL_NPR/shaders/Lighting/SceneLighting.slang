@@ -37,8 +37,8 @@ public float3 perLightBand(float3 arriving)
     return arriving * ((band * 0.18) / max(luminance, 1e-6));
 }
 
-/// Select the face band from incident RGB, then multiply by its scalar shadow visibility.
-public float3 visibleFaceBand(float3 incident, float visibility)
+/// Select the band from incident light so a soft cast shadow fades the band continuously.
+public float3 visibleLightBand(float3 incident, float visibility)
 {
     return perLightBand(incident) * visibility;
 }

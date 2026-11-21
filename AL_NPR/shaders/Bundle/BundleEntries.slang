@@ -2,6 +2,7 @@
 // Unity keyword variant. Keep register packing here and shading in the modules.
 import Lighting.SceneLighting;
 import Materials.Hair.HairLighting;
+import Materials.Hair.FiberStreak;
 import Lighting.ShadowFiltering;
 
 /// Read world-space unit normal from TEXCOORD0 and direction toward the light from TEXCOORD1. Output its
@@ -39,13 +40,13 @@ SamplerComparisonState shadowCompare : register(s0);
 /// TEXCOORD0 holds shadow atlas UV in XY and receiver depth in Z. Output tent-filtered visibility.
 float FaceShadow(float3 uvz : TEXCOORD0) : SV_Target
 {
-    return faceVisibility(shadowAtlas, shadowCompare, uvz);
+    return tentVisibility(shadowAtlas, shadowCompare, uvz);
 }
 
 /// TEXCOORD0 packs RGB incident light for banding and shadow visibility in A. Output the visible RGB band.
 float3 FaceBand(float4 light : TEXCOORD0) : SV_Target
 {
-    return visibleFaceBand(light.rgb, light.a);
+    return visibleLightBand(light.rgb, light.a);
 }
 
 /// Painted strand texture. The release highlight entry samples its red channel.
@@ -66,6 +67,34 @@ float HairReflection(float3 normal : TEXCOORD0, float3 tangent : TEXCOORD1,
 #else
     return glossReflection(normal, light, view);
 #endif
+}
+
+/// Full-width UV parameters keep FXC from packing consecutive semantics into
+/// the same register. The linker supplies one temporary per argument.
+float FiberReflection(float3 normal : TEXCOORD0, float3 fiber : TEXCOORD1,
+                      float3 light : TEXCOORD2, float3 view : TEXCOORD3,
+                      float4 uv : TEXCOORD4, float4 dx : TEXCOORD5, float4 dy : TEXCOORD6) : SV_Target
+{
+    return fiberStreak(highlight, highlightSampler, normal, fiber, light, view, uv.x, dx.xy, dy.xy, uv.z, uv.w);
+}
+
+/// Store the filtered material-space modulation in the spare UV.z lane before light traversal.
+float HairSheenNoise(float2 uv : TEXCOORD0) : SV_Target
+{
+    return fiberSheenNoise(uv);
+}
+
+/// The fine fiber tilt occupies UV.w alongside the broad noise scale in UV.z.
+float HairStrandTilt(float2 uv : TEXCOORD0) : SV_Target
+{
+    return fiberStrandTilt(uv);
+}
+
+/// The linker evaluates chart orientation before entering the per-light loops.
+float3 HairFiberAxis(float3 normal : TEXCOORD0, float3 tangent : TEXCOORD1,
+                     float2 uv : TEXCOORD2, float3 position : TEXCOORD3) : SV_Target
+{
+    return paintedFiberAxis(normal, tangent, uv, position);
 }
 
 /// Return the reciprocal compression divisor for incident RGB in TEXCOORD0.

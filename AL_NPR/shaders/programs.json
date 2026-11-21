@@ -423,7 +423,12 @@
       ]
     },
     "defines": [
-      "HAIR_NPR=1"
+      "HAIR_NPR=1",
+      "HAIR_FIBER=1",
+      "HAIR_FIBER_HALF=1",
+      "HAIR_FIBER_EXTENDED=1",
+      "HAIR_FIBER_NOISE=1",
+      "HAIR_FIBER_DENSE=1"
     ]
   },
   "HairForwardVS": {
@@ -453,7 +458,12 @@
       "defines": []
     },
     "defines": [
-      "HAIR_NPR=1"
+      "HAIR_NPR=1",
+      "HAIR_FIBER=1",
+      "HAIR_FIBER_HALF=1",
+      "HAIR_FIBER_EXTENDED=1",
+      "HAIR_FIBER_NOISE=1",
+      "HAIR_FIBER_DENSE=1"
     ]
   },
   "HairShadowCasterVS": {

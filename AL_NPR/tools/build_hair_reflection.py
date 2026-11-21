@@ -11,17 +11,37 @@ from build_skin_assets import (U32, ROW, attach_map_parameters, blob_references,
 from patch_skin_light_shoulder import SOURCE_XYZX, TEMP_XYZ, decode_program, emit, encode_program, imm32, shoulder
 
 BASE_HAIR = "0ddb7021d2021814ccd94b1b33561c0612189ff6fa636109805e79cda723d45d"
+EXTENDED_NOISE = ("HAIR_FIBER_HALF", "HAIR_FIBER_EXTENDED", "HAIR_FIBER_NOISE")
+STYLE_DEFINES = {
+    "gloss": (), "ribbon": ("HAIR_RIBBON",), "painted": ("HAIR_PAINTED",),
+    "fiber": (), "fiber-wide": ("HAIR_FIBER_WIDE",), "fiber-half": ("HAIR_FIBER_HALF",),
+    "fiber-half-noise": ("HAIR_FIBER_HALF", "HAIR_FIBER_NOISE"),
+    "fiber-extended-noise": EXTENDED_NOISE,
+    "fiber-extended-dense": (*EXTENDED_NOISE, "HAIR_FIBER_DENSE"),
+}
 X, Y, Z, W = (0x10000a + 16 * i for i in range(4))
 DX, DY, DZ, DW = (0x100002 + (16 << i) for i in range(4))
 
 
-def patch(code, entries, style, specular_only=False):
+def patch(code, entries, style, specular_only=False, fiber_axis=None, base_stripe_gain=None, uv_fields=()):
     lobe, diffuse, finish = entries
     version, ins = decode_program(code)
     ops = [t[0] & 2047 for t in ins]
     decl = ops.index(104)
     first = ins[decl][1]
     normal, tangent, light, view, rgb, total, value, ctr, mask, uv, dx, dy, gain, scratch = range(first, first+14)
+    fiber_setup = []
+    if fiber_axis is not None:
+        position = scratch
+        scratch += 1
+        # All inputs are staged in temporaries for the compiled Slang entry.
+        # Capture position from TEXCOORD0 before either light traversal.
+        fiber_setup = [emit(54,TEMP_XYZ,position,0x101246,1),
+                       *bind_entry(fiber_axis[1], [normal,tangent,uv,position], value, scratch),
+                       emit(54,TEMP_XYZ,tangent,SOURCE_XYZX,value)]
+        for lane, field in uv_fields:
+            fiber_setup.extend(bind_entry(field[1], [uv], value, scratch))
+            fiber_setup.append(emit(54,lane,uv,X,value))
     xyz = lambda r: (SOURCE_XYZX, r)
     def unit(reg):
         return [emit(16, DX, value, *xyz(reg), *xyz(reg)), emit(52, DX, value, X, value, *imm32(1e-8)),
@@ -58,7 +78,12 @@ def patch(code, entries, style, specular_only=False):
     result = []
     for i,t in enumerate(ins):
         if i == decl:
-            result.extend([emit(89|0x800,0x208e46,10,65), (t[0],scratch+max(entry[0] for entry in entries))])
+            temps = max(entry[0] for entry in entries)
+            if fiber_axis is not None:
+                temps = max(temps, fiber_axis[0])
+            for _, field in uv_fields:
+                temps = max(temps, field[0])
+            result.extend([emit(89|0x800,0x208e46,10,65), (t[0],scratch+temps)])
             continue
         if i == final:
             # Same stock HDR output and alpha coverage, with the scene specular
@@ -82,14 +107,14 @@ def patch(code, entries, style, specular_only=False):
         if i in raw_reads:
             result.extend(bind_entry(diffuse[1],[t[2]],gain,scratch))
         if i == view_site:
-            if style == "painted":
+            if style == "painted" or fiber_axis is not None:
                 result.extend([emit(54,0x100032,uv,0x101046,6), emit(11,0x100032,dx,0x100046,uv),
                                emit(12,0x100032,dy,0x100046,uv)])
             result.extend([emit(54,TEMP_XYZ,view,*view_src), emit(54,TEMP_XYZ,normal,0x101246,2),
                            *unit(normal),emit(54,TEMP_XYZ,tangent,0x101246,3),
                            emit(16,DX,value,*xyz(tangent),*xyz(normal)),
                            emit(50,TEMP_XYZ,tangent,0x80100246,0x41,normal,X,value,*xyz(tangent)),
-                           *unit(tangent),emit(54,TEMP_XYZ,total,*imm32(0)),
+                           *unit(tangent),*fiber_setup,emit(54,TEMP_XYZ,total,*imm32(0)),
                            emit(54,DX,ctr,0x4001,0),emit(84,DY,ctr,0x20800a,10,0,0x4001,32),
                            emit(48),emit(80,DW,ctr,X,ctr,Y,ctr),emit(3|0x40000,W,ctr),
                            emit(41,DZ,ctr,X,ctr,0x4001,1),
@@ -98,7 +123,8 @@ def patch(code, entries, style, specular_only=False):
                            *shoulder(rgb,value,.5,1.2), *accumulate(),
                            emit(30,DX,ctr,X,ctr,0x4001,1),emit(22)])
         if i == painted:
-            result.append(emit(56,*t[3:5],0x100e46,t[4],*imm32(.26 if style == "painted" else .22)))
+            gain_value = base_stripe_gain if base_stripe_gain is not None else (.22 if style in ("gloss", "ribbon") else .26)
+            result.append(emit(56,*t[3:5],0x100e46,t[4],*imm32(gain_value)))
         if i == lit+1:
             result.extend([emit(54,TEMP_XYZ,light,*ins[lit+2][5:7]),*accumulate()])
         if i == detail:
@@ -158,7 +184,7 @@ def pair_color_passes(tree, data, rows, changes):
     data[0] = U32.pack(len(rows)) + data[0][4:] + bytes((len(rows)-old_count)*ROW.size)
 
 
-def build(source, output, style, specular_only=False):
+def build(source, output, style, specular_only=False, base_stripe_gain=None):
     if source.resolve() == output.resolve():
         raise ValueError("Keep the approved skin and cloth baseline")
     payload = source.read_bytes()
@@ -170,8 +196,14 @@ def build(source, output, style, specular_only=False):
     tree = shader.read_typetree()
     data, rows = index(tree)
     changes = {}
-    defines = {"ribbon": ("HAIR_RIBBON",), "painted": ("HAIR_PAINTED",), "gloss": ()}
-    entries = (compile_entry("HairReflection",defines[style]),
+    defines = STYLE_DEFINES[style]
+    fiber_axis = compile_entry("HairFiberAxis") if style.startswith("fiber") else None
+    uv_fields = []
+    if "HAIR_FIBER_NOISE" in defines:
+        uv_fields.append((DZ, compile_entry("HairSheenNoise")))
+    if "HAIR_FIBER_DENSE" in defines:
+        uv_fields.append((DW, compile_entry("HairStrandTilt")))
+    entries = (compile_entry("FiberReflection" if fiber_axis is not None else "HairReflection",defines),
                compile_entry("HairDiffuseGain"), compile_entry("HairFinish"))
     for slot, refs in blob_references(tree["m_ParsedForm"]).items():
         if not any(p == "UniversalForward" and s == "progFragment" and "_FORWARD_PLUS" in k
@@ -184,7 +216,7 @@ def build(source, output, style, specular_only=False):
         if header[-36] != constant_buffer_register_count(c.code) or header[-36] > 10:
             raise ValueError("Unexpected hair constant buffer range")
         header[-36] = 11
-        dx = build_container([(tag,patch(v,entries,style,specular_only) if tag == b"SHEX" else v) for tag,v in parts(blob[c.start:c.end])])
+        dx = build_container([(tag,patch(v,entries,style,specular_only,fiber_axis,base_stripe_gain,uv_fields) if tag == b"SHEX" else v) for tag,v in parts(blob[c.start:c.end])])
         pos, = [i for i in range(0,c.start-3,4) if U32.unpack_from(header,i)[0] == c.end-i-4]
         U32.pack_into(header,pos,len(header)+len(dx)-pos-4)
         changes[slot] = header + dx + bytes((-(len(header)+len(dx)))%4) + blob[(c.end+3)&~3:]
@@ -208,7 +240,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source",type=Path)
     parser.add_argument("output",type=Path)
-    parser.add_argument("--style",choices=("gloss","ribbon","painted"),default="painted")
+    parser.add_argument("--style", choices=STYLE_DEFINES, default="painted")
+    parser.add_argument("--base-stripe-gain", type=float, help="Override the retained stock stripe for a lighting comparison")
     parser.add_argument("--specular-only", action="store_true", help="Show just the new hair reflection in the existing draw")
     args = parser.parse_args()
-    build(args.source,args.output,args.style,args.specular_only)
+    build(args.source,args.output,args.style,args.specular_only,args.base_stripe_gain)
