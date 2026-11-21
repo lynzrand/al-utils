@@ -110,8 +110,21 @@ foreach(index RANGE 0 ${last})
 endforeach()
 add_custom_target(shaders ALL DEPENDS ${outputs})
 
-# Asset packaging is optional. Compiling standalone Slang stages needs only
-# the shader toolchain. Unity targets additionally read the local game data.
+if(SHADER_TARGET STREQUAL "dxbc" AND SHADING STREQUAL "npr")
+    set(AL_BUNDLE_PYTHON python CACHE FILEPATH "Python with UnityPy and lz4 for standalone packaging")
+    set(standalone "${shader_root}/../standalone")
+    set(standalone_output "${CMAKE_CURRENT_BINARY_DIR}/standalone/al-skin-lighting.unity3d")
+    add_custom_command(OUTPUT "${standalone_output}"
+        COMMAND "${AL_BUNDLE_PYTHON}" "${standalone}/build.py" "${CMAKE_CURRENT_BINARY_DIR}" "${standalone_output}"
+        DEPENDS ${outputs} "${standalone}/build.py" "${standalone}/unity_bundle.py"
+                "${standalone}/layouts/Face.json" "${standalone}/layouts/Body.json"
+                "${standalone}/layouts/Cloth.json" "${standalone}/layouts/ClothAlpha.json"
+                "${standalone}/layouts/Hair.json" "${shader_root}/../tools/patch_skin_map_params.py"
+        VERBATIM)
+    add_custom_target(standalone-bundle DEPENDS "${standalone_output}")
+endif()
+
+# The reference and broad keyword-variant builds read the local game data.
 set(AL_GAME_PATH "$ENV{AL_GAME_PATH}" CACHE PATH "Amanatsu Location 1.0.4 game directory")
 if(AL_GAME_PATH)
     include("${shader_root}/cmake/UnityBundle.cmake")

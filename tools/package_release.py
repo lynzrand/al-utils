@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 from pathlib import Path
+import subprocess
 from zipfile import ZIP_DEFLATED, ZipFile
 
 
@@ -22,13 +23,17 @@ def package(output, name, files):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path)
-    parser.add_argument("lighting_patch", type=Path)
+    parser.add_argument("lighting_build", type=Path, help="configured NPR DXBC CMake build directory")
+    parser.add_argument("--lighting-only", action="store_true", help="package just AL_NPR")
     args = parser.parse_args()
+    subprocess.run(["cmake", "--build", str(args.lighting_build), "--target", "standalone-bundle"], check=True)
     args.output.mkdir(parents=True, exist_ok=True)
     archives = []
     for name, project in (("AL_PovX", "."), ("AL_NPR", "AL_NPR"), ("AL_VR", "AL_VR"),
                           ("AL_Performance", "AL_Performance"), ("AL_DevRepl", "AL_DevRepl"),
                           ("AL_RenderDocPreloader", "AL_Performance/RenderDocPreloader")):
+        if args.lighting_only and name != "AL_NPR":
+            continue
         directory = ROOT / project
         prefix = f"BepInEx/plugins/{name}/"
         if name == "AL_RenderDocPreloader":
@@ -38,9 +43,7 @@ def main():
                  (ROOT / "LICENSE", prefix + "LICENSE.txt"),
                  (directory / "README.md", prefix + "README.md")]
         if name == "AL_NPR":
-            items += [(directory / "Prepare AL Lighting.cmd", "Prepare AL Lighting.cmd"),
-                      (directory / "tools/release_delta.py", prefix + "release_delta.py"),
-                      (args.lighting_patch, prefix + "lighting.patch"),
+            items += [(args.lighting_build / "standalone/al-skin-lighting.unity3d", prefix + "al-skin-lighting.unity3d"),
                       (ROOT / "LICENSES/MPL-2.0.txt", prefix + "MPL-2.0.txt"),
                       (ROOT / "LICENSES/README.md", prefix + "LICENSE-NOTICE.md")]
         elif name == "AL_VR":

@@ -1,23 +1,29 @@
 # AL Scene Lighting
 
-AL Scene Lighting applies authored map light directions, per-light toon bands and shadow visibility to character materials. The release pairs normal-bent skin and fabric with painted hair reflections and a cubic filter for painted body oil.
+AL Scene Lighting applies authored map light directions and per-light toon shading to character skin, fabric and hair.
 
-Extract the archive beside the game executable and double-click **Prepare AL Lighting.cmd**. The preparation script requires 64-bit Python 3.11, installs its Python dependencies into a private environment under BepInEx/cache, and verifies the rebuilt asset before installing it beside the plugin. It reads the original 1.0.4 game files. Press **F7** in a scene to compare the replacement and original materials. The additional-light shadow depth precision option is in BepInEx/config/local.al.npr.cfg.
+## Installing the standalone build
 
-## Editing the shaders
+Extract the archive beside `AmanatsuLocation.exe` with BepInEx 6 IL2CPP installed. Start the game. The DLL and its shader bundle belong together in `BepInEx/plugins/AL_NPR/`. When upgrading, replace both files. Press **F7** on a map to compare with stock lighting. Shadow settings are in `BepInEx/config/local.al.npr.cfg`.
 
-Edit the Slang material or shared lighting function, then build the `bundle` target to try the compiled stage. The same source tree builds an editable stock reconstruction with `-DSHADING=stock`. Use `original-bundle` for a comparison with the exact game bytecode. Each target writes to the build directory. [Shader targets and feature flags](shaders/README.md) · [How the game draws a material](shaders/MAINTAINING.md)
+This build targets the Windows Direct3D player in Amanatsu Location 1.0.4. It contains the reconstructed non-instanced configuration of each material pass. Other keyword permutations, including instancing and alternate shadow layouts, were present in the earlier game-derived bundle and may render differently here.
 
-## Reproducing the release
+## Building the bundle
 
-Build AL_NPR.csproj in Release against the game's BepInEx 6 IL2CPP installation. For the shader work, install UnityPy 1.25.4 and lz4 4.4.5 in Python 3.11, use a Windows SDK FXC compiler, and have Slang on PATH. Set AL_GAME_PATH to the game folder, configure the Slang project with CMake and build its release target.
+The release build reads the Slang sources and checked-in Unity material layouts. Install CMake, Ninja, Slang, Windows SDK FXC, and Python 3.11 with UnityPy 1.25.4 and lz4 4.4.5. From the repository root:
 
 ~~~powershell
-cmake -S AL_NPR/shaders -B artifacts/npr/npr -G Ninja
-cmake --build artifacts/npr/npr --target release-bundle
-$release = "artifacts/npr/npr/variants/release.unity3d"
-python AL_NPR/tools/validate_toon_bundle.py $release
-python AL_NPR/tools/release_delta.py "$env:AL_GAME_PATH" "artifacts/npr/npr/lighting.patch" --create-from $release
+$python = (Get-Command python).Source
+cmake -S AL_NPR/shaders -B artifacts/npr/standalone-build -G Ninja "-DAL_BUNDLE_PYTHON=$python" "-DAL_GAME_PATH="
+cmake --build artifacts/npr/standalone-build --target standalone-bundle
 ~~~
 
-The release patch reconstructs and verifies the tested bundle with SHA-256 36ae8431f0abc87cefcf487385c345859d89347c94106e48e6ae997a2493aec1. Edit the [Slang modules](shaders/README.md) for lighting, hair, shadows and body oil. The same functions feed the representative stages and the release builder's SM5 entries. The handwritten HLSL listings are historical references.
+The output is `artifacts/npr/standalone-build/standalone/al-skin-lighting.unity3d`. The builder serializes five shaders and a bundle catalog, then reopens them and checks the result. Each shader contains the vertex and fragment stages for ExtraPrePass, Forward, ShadowCaster, DepthOnly and DepthNormals. The layouts describe the material properties, render states, mesh channels and Unity buffer bindings used by those stages.
+
+To make the player download, supply a Release build of `AL_NPR.dll` in `AL_NPR/bin/Release/net6.0/`. Rebuilding the managed DLL requires BepInEx and game interop references. With the DLL already built, the packaging command needs only the shader toolchain:
+
+~~~powershell
+python tools/package_release.py artifacts/npr/downloads artifacts/npr/standalone-build --lighting-only
+~~~
+
+The game-backed `bundle`, `original-bundle` and `release-bundle` targets remain available for reference comparisons. Maintaining the layouts for a different player version is a separate development operation. `standalone/export_layouts.py` reads a reference bundle to refresh the JSON interface data. [Shader targets and feature flags](shaders/README.md) · [How the game draws a material](shaders/MAINTAINING.md)

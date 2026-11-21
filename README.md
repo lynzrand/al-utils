@@ -20,10 +20,9 @@ Ever wondered why we need a primary "key" light for character shading? Turns out
 necessary! Characters will use the scene lightings with this plugin installed. Might look weird.
 Definitely needs more polishing.
 
-Extract the archive, then run **Prepare AL Lighting.cmd** once from the game folder before starting
-the game. It uses 64-bit Python 3.11 to build and verify the shader bundle from your 1.0.4 game
-files. The lighting loads at startup. Press **F7** in a scene to compare it with the original
-lighting.
+Extract the [standalone AL_NPR.zip](https://github.com/lynzrand/al-utils/releases/download/al-npr-standalone-v1/AL_NPR.zip) beside `AmanatsuLocation.exe` and start the game. The plugin loads
+`al-skin-lighting.unity3d` beside its DLL. Press **F7** in a scene to compare it with the original
+lighting. Older archives that contain **Prepare AL Lighting.cmd** have their own setup instructions.
 
 p.s. we also have the full shader translated into very modular Slang, courtesy of GPT.
 
